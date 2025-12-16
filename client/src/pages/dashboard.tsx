@@ -515,8 +515,27 @@ export default function Dashboard() {
     return { wallet, chain };
   };
 
-  // Filter and sort enabled assets
+  // Check if an asset has a wallet (either directly or via parent chain for tokens)
+  const hasWalletForAsset = (asset: TopAsset): boolean => {
+    const parentChainName = TOKEN_PARENT_CHAIN[asset.id];
+    if (parentChainName) {
+      // For tokens, check if parent chain has a wallet
+      const parentChain = displayChains.find(c => c.name === parentChainName);
+      if (!parentChain) return false;
+      return displayWallets.some(w => w.chainId === parentChain.id);
+    } else {
+      // For native assets, check if the chain has a wallet
+      const { wallet } = getWalletForAsset(asset);
+      return !!wallet;
+    }
+  };
+
+  // Filter and sort enabled assets - only show assets with wallets
   const filteredAssets = enabledAssets.filter(asset => {
+    // First check if asset has a wallet
+    if (!hasWalletForAsset(asset)) return false;
+    
+    // Then apply search filter
     if (!assetSearch.trim()) return true;
     const searchLower = assetSearch.toLowerCase();
     return (
