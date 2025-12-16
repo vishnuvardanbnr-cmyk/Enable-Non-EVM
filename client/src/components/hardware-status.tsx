@@ -1351,10 +1351,10 @@ export function HardwareStatusCard() {
               className="-mt-1"
               animate={{ y: [8, -2, -2, 8] }}
               transition={{
-                duration: 3,
+                duration: 7,
                 repeat: Infinity,
                 ease: "easeInOut",
-                times: [0, 0.3, 0.7, 1],
+                times: [0, 0.12, 0.88, 1],
               }}
             >
               <div className="flex flex-col items-center">
