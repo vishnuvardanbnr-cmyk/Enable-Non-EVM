@@ -1394,14 +1394,14 @@ export function HardwareStatusCard() {
         
         {!isConnected ? (
           <>
-            <h3 className="mb-2 text-lg font-semibold">
-              {walletMode === "soft_wallet" ? "Set Up Your Soft Wallet" : "Set Up Your Hardware Wallet"}
-            </h3>
-            <p className="mb-6 max-w-sm text-sm text-muted-foreground">
-              {walletMode === "soft_wallet" 
-                ? "Generate a new recovery phrase to secure your wallet."
-                : "Connect a hardware device. Your private keys never leave the device."}
-            </p>
+            {walletMode === "soft_wallet" && (
+              <>
+                <h3 className="mb-2 text-lg font-semibold">Set Up Your Soft Wallet</h3>
+                <p className="mb-6 max-w-sm text-sm text-muted-foreground">
+                  Generate a new recovery phrase to secure your wallet.
+                </p>
+              </>
+            )}
             <div className="flex flex-wrap gap-2 justify-center">
               <Button onClick={handleAction} data-testid="button-setup-wallet">
                 {walletMode === "soft_wallet" 
