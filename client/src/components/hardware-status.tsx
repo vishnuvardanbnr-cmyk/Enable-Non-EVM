@@ -1340,10 +1340,10 @@ export function HardwareStatusCard() {
     <>
       <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-muted-foreground/30 bg-muted/20 p-8 text-center">
         {walletMode === "hard_wallet" ? (
-          <div className="mb-4 relative h-44 w-32 flex flex-col items-center">
-            <div className="relative w-20 h-32 rounded-2xl border-2 border-muted-foreground/30 bg-muted/30">
-              <div className="absolute top-1.5 left-1/2 -translate-x-1/2 w-6 h-1.5 rounded-full bg-muted-foreground/20" />
-              <div className="absolute inset-1.5 top-3.5 rounded-xl bg-gradient-to-b from-slate-900 to-slate-800 dark:from-slate-800 dark:to-slate-900 flex flex-col items-center justify-center p-2 shadow-inner">
+          <div className="mb-4 relative h-52 w-40 flex flex-col items-center">
+            <div className="relative w-24 h-40 rounded-3xl border-2 border-muted-foreground/30 bg-muted/20">
+              <div className="absolute top-2 left-1/2 -translate-x-1/2 w-8 h-1.5 rounded-full bg-muted-foreground/20" />
+              <div className="absolute inset-2 top-5 bottom-6 rounded-2xl bg-background flex flex-col items-center justify-center p-3 border border-border/50">
                 <motion.div
                   className="text-center flex flex-col items-center"
                   animate={{ opacity: [0, 0, 1, 1, 1, 0, 0] }}
@@ -1353,22 +1353,21 @@ export function HardwareStatusCard() {
                     times: [0, 0.12, 0.18, 0.5, 0.82, 0.88, 1],
                   }}
                 >
-                  <div className="w-4 h-4 rounded-full bg-primary flex items-center justify-center mb-1 shadow-sm">
-                    <Shield className="w-2.5 h-2.5 text-white" />
+                  <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center mb-1.5">
+                    <Shield className="w-3.5 h-3.5 text-primary" />
                   </div>
-                  <p className="text-[8px] font-bold text-white leading-none tracking-tight">VaultKey</p>
-                  <div className="flex items-center gap-0.5 mt-1 px-1.5 py-0.5 rounded-full bg-green-500/20">
-                    <div className="w-1 h-1 rounded-full bg-green-400 animate-pulse" />
-                    <p className="text-[5px] font-semibold text-green-400 leading-none">Connected</p>
+                  <p className="text-[10px] font-bold text-foreground leading-none tracking-tight">VaultKey</p>
+                  <div className="flex items-center gap-1 mt-1.5 px-2 py-0.5 rounded-full bg-green-500/10 border border-green-500/20">
+                    <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+                    <p className="text-[7px] font-semibold text-green-600 dark:text-green-400 leading-none">Connected</p>
                   </div>
                 </motion.div>
               </div>
-              <div className="absolute bottom-1 left-1/2 -translate-x-1/2 w-4 h-4 rounded-full border border-muted-foreground/20" />
-              <div className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-3 h-1.5 bg-muted-foreground/40 rounded-b-sm" />
+              <div className="absolute bottom-1.5 left-1/2 -translate-x-1/2 w-6 h-1.5 rounded-full bg-muted-foreground/15" />
             </div>
             <motion.div
               className="-mt-1"
-              animate={{ y: [8, -2, -2, 8] }}
+              animate={{ y: [10, -2, -2, 10] }}
               transition={{
                 duration: 7,
                 repeat: Infinity,
@@ -1377,11 +1376,11 @@ export function HardwareStatusCard() {
               }}
             >
               <div className="flex flex-col items-center">
-                <div className="w-2.5 h-1 bg-muted-foreground/50 rounded-t-sm" />
-                <div className="w-6 h-10 bg-primary rounded-md border-2 border-primary flex flex-col items-center justify-center gap-0.5 shadow-sm">
-                  <div className="w-3 h-0.5 bg-background/50 rounded-full" />
-                  <div className="w-3 h-0.5 bg-background/50 rounded-full" />
-                  <Usb className="h-3 w-3 text-background/70 mt-0.5" />
+                <div className="w-3 h-1.5 bg-muted-foreground/40 rounded-t-sm" />
+                <div className="w-8 h-12 bg-primary rounded-lg border-2 border-primary flex flex-col items-center justify-center gap-0.5 shadow-md">
+                  <div className="w-4 h-0.5 bg-background/50 rounded-full" />
+                  <div className="w-4 h-0.5 bg-background/50 rounded-full" />
+                  <Usb className="h-4 w-4 text-background/80 mt-0.5" />
                 </div>
               </div>
             </motion.div>
