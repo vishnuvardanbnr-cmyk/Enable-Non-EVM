@@ -509,6 +509,17 @@ export default function Dashboard() {
   const enabledAssets = topAssets.filter(asset => enabledAssetIds.has(asset.id));
 
   const getWalletForAsset = (asset: TopAsset): { wallet?: WalletType; chain?: Chain } => {
+    // Check if this is a token - if so, look up by parent chain name
+    const parentChainName = TOKEN_PARENT_CHAIN[asset.id];
+    if (parentChainName) {
+      // For tokens, find the parent chain by name
+      const chain = displayChains.find(c => c.name === parentChainName);
+      if (!chain) return {};
+      const wallet = displayWallets.find(w => w.chainId === chain.id);
+      return { wallet, chain };
+    }
+    
+    // For native assets, use the symbol mapping
     const chainSymbol = COINGECKO_ID_TO_CHAIN_SYMBOL[asset.id];
     if (!chainSymbol) return {};
     
