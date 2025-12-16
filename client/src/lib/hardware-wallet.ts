@@ -4,6 +4,7 @@ import Eth from "@ledgerhq/hw-app-eth";
 import { ethers } from "ethers";
 import { piWallet, type StoredChainPreference } from "./pi-wallet";
 import { clientStorage } from "./client-storage";
+import { mobileUsbSerial, isMobileWithUsbSupport } from "./mobile-usb-serial";
 import { 
   signNonEvmTransaction, 
   type NonEvmTransactionParams,
@@ -157,15 +158,30 @@ class HardwareWalletService {
     this.picoHasWallet = hasWallet;
   }
 
+  private usingMobileUsb = false;
+
   async connectRaspberryPi(): Promise<boolean> {
     console.log("[HardwareWallet] connectRaspberryPi() called");
+    
+    // Try mobile USB serial first on Android
+    if (isMobileWithUsbSupport()) {
+      console.log("[HardwareWallet] Trying mobile USB serial...");
+      try {
+        const mobileAvailable = await mobileUsbSerial.isAvailable();
+        if (mobileAvailable) {
+          return await this.connectViaMobileUsb();
+        }
+      } catch (e) {
+        console.log("[HardwareWallet] Mobile USB not available:", e);
+      }
+    }
     
     if (!this.isWebSerialSupported()) {
       console.log("[HardwareWallet] WebSerial not supported");
       const isMobile = this.isMobileDevice();
       this.setState({ 
         error: isMobile 
-          ? "Hardware wallet connection is not supported on mobile browsers. Please use a desktop browser (Chrome or Edge) or connect via WalletConnect."
+          ? "No Pico detected via USB. Connect your Pico using an OTG cable or use the Mobile Bridge."
           : "WebSerial is not supported in this browser. Please use Chrome or Edge on desktop.",
         status: "disconnected"
       });
@@ -193,6 +209,7 @@ class HardwareWalletService {
       
       this.picoHasWallet = status?.has_seed === true;
       console.log("[HardwareWallet] Device has wallet:", this.picoHasWallet);
+      this.usingMobileUsb = false;
       
       // SECURITY: Always require PIN entry on connection, even if device reports unlocked
       // This prevents cached session from bypassing PIN verification
@@ -222,6 +239,50 @@ class HardwareWalletService {
       });
       return false;
     }
+  }
+
+  private async connectViaMobileUsb(): Promise<boolean> {
+    try {
+      this.setState({ status: "connecting", error: null });
+      console.log("[HardwareWallet] Connecting via mobile USB...");
+
+      const connected = await mobileUsbSerial.connect();
+      if (!connected) {
+        throw new Error("Failed to connect via mobile USB");
+      }
+
+      const pong = await mobileUsbSerial.ping();
+      if (!pong) {
+        throw new Error("Device not responding");
+      }
+
+      const status = await mobileUsbSerial.getStatus();
+      
+      this.picoHasWallet = status?.has_seed === true;
+      this.usingMobileUsb = true;
+      
+      this.setState({
+        type: "raspberry_pi",
+        status: "connected",
+        deviceName: status?.device_name || "Pico Wallet (USB OTG)",
+        error: null,
+      });
+
+      return true;
+    } catch (error: any) {
+      console.log("[HardwareWallet] Mobile USB connection failed:", error);
+      this.setState({
+        type: null,
+        status: "disconnected",
+        deviceName: null,
+        error: error.message || "Failed to connect via USB",
+      });
+      return false;
+    }
+  }
+
+  isUsingMobileUsb(): boolean {
+    return this.usingMobileUsb;
   }
 
   async connectLedger(): Promise<boolean> {

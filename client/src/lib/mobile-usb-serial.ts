@@ -1,0 +1,174 @@
+import { Capacitor, registerPlugin } from "@capacitor/core";
+
+interface UsbDevice {
+  deviceId: number;
+  vendorId: number;
+  productId: number;
+  deviceName: string;
+  productName?: string;
+  manufacturerName?: string;
+}
+
+interface UsbSerialPlugin {
+  getDevices(): Promise<{ success: boolean; devices: Record<string, UsbDevice>; count: number }>;
+  connect(options: { vendorId?: number; productId?: number }): Promise<{ success: boolean; deviceName?: string; error?: string }>;
+  disconnect(): Promise<{ success: boolean }>;
+  write(options: { data: string }): Promise<{ success: boolean; bytesWritten?: number; error?: string }>;
+  read(options?: { timeout?: number }): Promise<{ success: boolean; data?: string; bytesRead?: number; error?: string }>;
+  isConnected(): Promise<{ connected: boolean }>;
+  addListener(event: "usbData", callback: (data: { data: string }) => void): Promise<{ remove: () => void }>;
+  addListener(event: "usbDisconnected", callback: () => void): Promise<{ remove: () => void }>;
+}
+
+const UsbSerial = registerPlugin<UsbSerialPlugin>("UsbSerial");
+
+export function isMobileWithUsbSupport(): boolean {
+  return Capacitor.isNativePlatform() && Capacitor.getPlatform() === "android";
+}
+
+export class MobileUsbSerialService {
+  private connected = false;
+  private readBuffer = "";
+  private responseResolver: ((value: any) => void) | null = null;
+  private responseTimeout: ReturnType<typeof setTimeout> | null = null;
+  private dataListener: { remove: () => void } | null = null;
+
+  async isAvailable(): Promise<boolean> {
+    if (!isMobileWithUsbSupport()) {
+      return false;
+    }
+    try {
+      const result = await UsbSerial.getDevices();
+      return result.success && result.count > 0;
+    } catch {
+      return false;
+    }
+  }
+
+  async connect(): Promise<boolean> {
+    if (!isMobileWithUsbSupport()) {
+      throw new Error("Mobile USB serial not available on this platform");
+    }
+
+    try {
+      const result = await UsbSerial.connect({ vendorId: 11914 });
+      
+      if (!result.success) {
+        throw new Error(result.error || "Failed to connect");
+      }
+
+      this.connected = true;
+      
+      this.dataListener = await UsbSerial.addListener("usbData", (event) => {
+        this.handleData(event.data);
+      });
+
+      return true;
+    } catch (error: any) {
+      this.connected = false;
+      throw error;
+    }
+  }
+
+  private handleData(data: string) {
+    this.readBuffer += data;
+    
+    let newlineIndex;
+    while ((newlineIndex = this.readBuffer.indexOf("\n")) !== -1) {
+      const line = this.readBuffer.slice(0, newlineIndex).trim();
+      this.readBuffer = this.readBuffer.slice(newlineIndex + 1);
+      
+      if (line && line.startsWith("{") && this.responseResolver) {
+        try {
+          const response = JSON.parse(line);
+          if (this.responseTimeout) {
+            clearTimeout(this.responseTimeout);
+            this.responseTimeout = null;
+          }
+          this.responseResolver(response);
+          this.responseResolver = null;
+        } catch {}
+      }
+    }
+  }
+
+  async disconnect(): Promise<void> {
+    if (this.dataListener) {
+      this.dataListener.remove();
+      this.dataListener = null;
+    }
+    
+    try {
+      await UsbSerial.disconnect();
+    } catch {}
+    
+    this.connected = false;
+    this.readBuffer = "";
+  }
+
+  async sendCommand(action: string, params?: Record<string, any>): Promise<any> {
+    if (!this.connected) {
+      throw new Error("Not connected to Pico wallet");
+    }
+
+    const message = JSON.stringify({ action, ...params }) + "\r\n";
+    
+    const writeResult = await UsbSerial.write({ data: message });
+    if (!writeResult.success) {
+      throw new Error(writeResult.error || "Write failed");
+    }
+
+    return new Promise((resolve, reject) => {
+      this.responseResolver = resolve;
+      this.responseTimeout = setTimeout(() => {
+        this.responseResolver = null;
+        reject(new Error("Command timed out"));
+      }, 10000);
+    });
+  }
+
+  async ping(): Promise<boolean> {
+    try {
+      const response = await this.sendCommand("ping");
+      return response.pong === true;
+    } catch {
+      return false;
+    }
+  }
+
+  async getStatus(): Promise<{ initialized: boolean; locked: boolean; has_seed: boolean; device_name: string } | null> {
+    try {
+      const response = await this.sendCommand("status");
+      return {
+        initialized: response.has_wallet === true,
+        locked: response.unlocked !== true,
+        has_seed: response.has_wallet === true,
+        device_name: "Pico Hardware Wallet (USB)",
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  async unlock(pin: string): Promise<boolean> {
+    const response = await this.sendCommand("unlock", { pin });
+    if (response.error) {
+      throw new Error(response.error);
+    }
+    return response.success === true || response.unlocked === true;
+  }
+
+  async setupWallet(pin: string, seedPhrase: string): Promise<boolean> {
+    const response = await this.sendCommand("setup", { pin, seed: seedPhrase });
+    if (response.error) {
+      throw new Error(response.error);
+    }
+    return response.success === true;
+  }
+
+  isConnectedSync(): boolean {
+    return this.connected;
+  }
+}
+
+export const mobileUsbSerial = new MobileUsbSerialService();

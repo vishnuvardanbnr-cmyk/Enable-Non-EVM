@@ -158,7 +158,7 @@ class PiWalletService {
     }
   }
 
-  private async sendCommand(action: string, params?: Record<string, any>): Promise<PiWalletResponse> {
+  async sendCommand(action: string, params?: Record<string, any>): Promise<PiWalletResponse> {
     if (!this.writer || !this.connected) {
       throw new Error("Not connected to Pico wallet");
     }

@@ -1,6 +1,21 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
+import { WebSocketServer, WebSocket } from "ws";
 import { storage } from "./storage";
+
+// Bridge state for mobile-to-desktop Pico connection
+interface BridgeSession {
+  desktopWs: WebSocket | null;
+  mobileWs: WebSocket | null;
+  sessionId: string;
+  createdAt: number;
+}
+
+const bridgeSessions: Map<string, BridgeSession> = new Map();
+
+function generateSessionId(): string {
+  return Math.random().toString(36).substring(2, 8).toUpperCase();
+}
 
 // Chain RPC endpoints for gas estimation
 const CHAIN_RPC_ENDPOINTS: Record<string, string> = {
@@ -116,6 +131,136 @@ export async function registerRoutes(
       symbol: fallback.unit,
       error: 'Using estimated values',
     });
+  });
+
+  // Bridge session management API
+  app.post('/api/bridge/create', (req, res) => {
+    const sessionId = generateSessionId();
+    bridgeSessions.set(sessionId, {
+      desktopWs: null,
+      mobileWs: null,
+      sessionId,
+      createdAt: Date.now()
+    });
+    
+    // Clean up old sessions (older than 1 hour)
+    const oneHourAgo = Date.now() - 60 * 60 * 1000;
+    Array.from(bridgeSessions.entries()).forEach(([id, session]) => {
+      if (session.createdAt < oneHourAgo) {
+        bridgeSessions.delete(id);
+      }
+    });
+    
+    res.json({ sessionId });
+  });
+  
+  app.get('/api/bridge/status/:sessionId', (req, res) => {
+    const session = bridgeSessions.get(req.params.sessionId);
+    if (!session) {
+      return res.json({ exists: false });
+    }
+    res.json({
+      exists: true,
+      desktopConnected: session.desktopWs !== null && session.desktopWs.readyState === WebSocket.OPEN,
+      mobileConnected: session.mobileWs !== null && session.mobileWs.readyState === WebSocket.OPEN
+    });
+  });
+
+  // WebSocket server for bridge communication
+  const wss = new WebSocketServer({ server: httpServer, path: '/ws/bridge' });
+  
+  wss.on('connection', (ws, req) => {
+    const url = new URL(req.url || '', `http://${req.headers.host}`);
+    const sessionId = url.searchParams.get('sessionId');
+    const role = url.searchParams.get('role'); // 'desktop' or 'mobile'
+    
+    if (!sessionId || !role) {
+      ws.close(1008, 'Missing sessionId or role');
+      return;
+    }
+    
+    let session = bridgeSessions.get(sessionId);
+    if (!session) {
+      // Auto-create session for desktop
+      if (role === 'desktop') {
+        session = {
+          desktopWs: null,
+          mobileWs: null,
+          sessionId,
+          createdAt: Date.now()
+        };
+        bridgeSessions.set(sessionId, session);
+      } else {
+        ws.close(1008, 'Session not found');
+        return;
+      }
+    }
+    
+    if (role === 'desktop') {
+      session.desktopWs = ws;
+      // Notify mobile if connected
+      if (session.mobileWs && session.mobileWs.readyState === WebSocket.OPEN) {
+        session.mobileWs.send(JSON.stringify({ type: 'desktop_connected' }));
+      }
+    } else if (role === 'mobile') {
+      session.mobileWs = ws;
+      // Notify desktop if connected
+      if (session.desktopWs && session.desktopWs.readyState === WebSocket.OPEN) {
+        session.desktopWs.send(JSON.stringify({ type: 'mobile_connected' }));
+      }
+    }
+    
+    ws.on('message', (data) => {
+      try {
+        const message = JSON.parse(data.toString());
+        const currentSession = bridgeSessions.get(sessionId);
+        if (!currentSession) return;
+        
+        // Validate message has required fields
+        if (typeof message !== 'object' || !message.type) {
+          ws.send(JSON.stringify({ type: 'error', error: 'Invalid message format' }));
+          return;
+        }
+        
+        // Relay messages between desktop and mobile with role validation
+        if (role === 'desktop' && currentSession.mobileWs && currentSession.mobileWs.readyState === WebSocket.OPEN) {
+          currentSession.mobileWs.send(JSON.stringify({ ...message, from: 'desktop' }));
+        } else if (role === 'mobile' && currentSession.desktopWs && currentSession.desktopWs.readyState === WebSocket.OPEN) {
+          currentSession.desktopWs.send(JSON.stringify({ ...message, from: 'mobile' }));
+        } else if (role === 'mobile' && (!currentSession.desktopWs || currentSession.desktopWs.readyState !== WebSocket.OPEN)) {
+          // Desktop not connected - notify mobile
+          ws.send(JSON.stringify({ type: 'error', error: 'Desktop not connected' }));
+        }
+      } catch (e) {
+        console.error('Bridge message error:', e);
+        ws.send(JSON.stringify({ type: 'error', error: 'Failed to process message' }));
+      }
+    });
+    
+    ws.on('close', () => {
+      const currentSession = bridgeSessions.get(sessionId);
+      if (!currentSession) return;
+      
+      if (role === 'desktop') {
+        currentSession.desktopWs = null;
+        if (currentSession.mobileWs && currentSession.mobileWs.readyState === WebSocket.OPEN) {
+          currentSession.mobileWs.send(JSON.stringify({ type: 'desktop_disconnected' }));
+        }
+      } else if (role === 'mobile') {
+        currentSession.mobileWs = null;
+        if (currentSession.desktopWs && currentSession.desktopWs.readyState === WebSocket.OPEN) {
+          currentSession.desktopWs.send(JSON.stringify({ type: 'mobile_disconnected' }));
+        }
+      }
+      
+      // Clean up session when both peers disconnect
+      if (!currentSession.desktopWs && !currentSession.mobileWs) {
+        bridgeSessions.delete(sessionId);
+      }
+    });
+    
+    // Send connection confirmation
+    ws.send(JSON.stringify({ type: 'connected', role, sessionId }));
   });
 
   return httpServer;

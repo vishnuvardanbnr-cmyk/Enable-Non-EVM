@@ -464,10 +464,37 @@ export function HardwareStatus() {
           {/* Hard Wallet Mode - Show tabs for device selection */}
           {walletMode === "hard_wallet" && (
             <div className="space-y-4 mt-4">
-              <p className="text-sm text-muted-foreground">Connect your hardware wallet device via USB.</p>
-              <Button className="w-full" onClick={handleHeaderConnectRaspberryPi} disabled={isLoading} data-testid="button-header-connect-hard-wallet">
-                {isLoading ? "Connecting..." : "Connect Hard Wallet"}
-              </Button>
+              {/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ? (
+                <>
+                  <Alert>
+                    <Smartphone className="h-4 w-4" />
+                    <AlertDescription>
+                      USB connection is not available on mobile devices. Use the Mobile Bridge to connect through a desktop computer.
+                    </AlertDescription>
+                  </Alert>
+                  <Button 
+                    className="w-full" 
+                    onClick={() => {
+                      setShowHeaderSetupDialog(false);
+                      window.location.href = "/bridge";
+                    }}
+                    data-testid="button-mobile-bridge"
+                  >
+                    <Smartphone className="h-4 w-4 mr-2" />
+                    Open Mobile Bridge
+                  </Button>
+                  <p className="text-xs text-muted-foreground text-center">
+                    Or use a desktop browser with USB support.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p className="text-sm text-muted-foreground">Connect your hardware wallet device via USB.</p>
+                  <Button className="w-full" onClick={handleHeaderConnectRaspberryPi} disabled={isLoading} data-testid="button-header-connect-hard-wallet">
+                    {isLoading ? "Connecting..." : "Connect Hard Wallet"}
+                  </Button>
+                </>
+              )}
             </div>
           )}
           

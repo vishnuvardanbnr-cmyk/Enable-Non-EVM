@@ -2,7 +2,7 @@
 
 ## Overview
 
-This is a full-stack TypeScript web application using React on the frontend and Express on the backend. The project follows a monorepo structure with client, server, and shared directories. It's designed as a starter template with user authentication scaffolding and a component library already in place.
+SecureVault (V1wallet/VaultKey) is a portable cryptocurrency hardware wallet application that maintains consistent wallet configuration across multiple devices. It stores chain preferences, wallet addresses, and labels on a Raspberry Pi Pico hardware device, displaying identical addresses and chain preferences regardless of which computer connects.
 
 ## User Preferences
 
@@ -17,18 +17,25 @@ Preferred communication style: Simple, everyday language.
 - **UI Components**: shadcn/ui component library built on Radix UI primitives
 - **Styling**: Tailwind CSS with CSS variables for theming (supports light/dark mode)
 - **Build Tool**: Vite for development and production builds
+- **Mobile**: Capacitor 7/8 for Android APK generation
 
 ### Backend Architecture
 - **Framework**: Express.js with TypeScript
 - **Runtime**: Node.js with tsx for TypeScript execution
 - **API Pattern**: RESTful API with `/api` prefix for all routes
-- **Static Serving**: Built frontend served from `dist/public` in production
+- **WebSocket**: Bridge server for mobile-to-desktop Pico connection
 
-### Data Layer
-- **ORM**: Drizzle ORM with PostgreSQL dialect
-- **Schema Location**: `shared/schema.ts` contains database table definitions
-- **Validation**: Zod schemas generated from Drizzle schemas using drizzle-zod
-- **Storage Interface**: Abstract `IStorage` interface in `server/storage.ts` with in-memory implementation (can be swapped for database)
+### Hardware Integration
+- **Raspberry Pi Pico H**: USB-connected hardware wallet via Web Serial API
+- **Ledger**: Optional support via WebHID API
+- **Simulated Wallet**: Software-based wallet option (Soft Wallet mode)
+
+### Crypto Libraries (Pure JavaScript - NO WebAssembly)
+- **ethers.js**: EVM chains, secp256k1 operations, BIP39/BIP44 derivation
+- **tweetnacl**: Ed25519 for Solana
+- **bitcoinjs-lib**: Bitcoin transaction support with manual Bech32/Bech32m
+- **@solana/web3.js**: Solana transactions
+- Custom TRON implementation using ethers for signing
 
 ### Project Structure
 ```
@@ -36,45 +43,55 @@ Preferred communication style: Simple, everyday language.
 │   ├── src/
 │   │   ├── components/ui/  # shadcn/ui components
 │   │   ├── hooks/          # Custom React hooks
-│   │   ├── lib/            # Utilities (queryClient, utils)
+│   │   ├── lib/            # Wallet services, crypto utilities
+│   │   │   ├── hardware-wallet.ts  # Hardware wallet connection
+│   │   │   ├── soft-wallet.ts      # Software wallet implementation
+│   │   │   ├── pi-wallet.ts        # Pico USB communication
+│   │   │   ├── non-evm-chains.ts   # Bitcoin, Solana, TRON support
+│   │   │   └── wallet-context.tsx  # Global wallet state
 │   │   └── pages/          # Page components
+│   │       ├── bridge.tsx  # Mobile-Desktop bridge
+│   │       ├── transfer.tsx # Send/Receive
+│   │       └── dashboard.tsx
 ├── server/          # Express backend
-│   ├── index.ts     # Server entry point
-│   ├── routes.ts    # API route definitions
-│   ├── storage.ts   # Data storage interface
-│   └── vite.ts      # Vite dev server integration
-├── shared/          # Shared code between client/server
-│   └── schema.ts    # Database schema definitions
-└── migrations/      # Drizzle database migrations
+│   ├── routes.ts    # API + WebSocket bridge
+├── android/         # Capacitor Android project
+├── pico_wallet/     # Raspberry Pi Pico firmware (MicroPython)
+│   └── main.py      # Wallet storage on Pico flash
+└── shared/          # Shared types
+    └── schema.ts    # Chain definitions
 ```
 
-### Build System
-- **Development**: Vite dev server with HMR, proxied through Express
-- **Production**: esbuild bundles server, Vite builds client to `dist/`
-- **Scripts**: `npm run dev` for development, `npm run build` + `npm start` for production
+### Mobile Bridge (for Pico H without WiFi/Bluetooth)
+Since the Raspberry Pi Pico H lacks wireless connectivity, mobile apps connect through a bridge:
+1. Desktop browser connects to Pico via USB (Web Serial API)
+2. Desktop runs as bridge server (WebSocket at `/ws/bridge`)
+3. Mobile app connects to desktop via network
+4. Commands are relayed: Mobile → Desktop → Pico → Desktop → Mobile
+
+API Endpoints:
+- `POST /api/bridge/create` - Creates a new bridge session, returns `{ sessionId }`
+- `GET /api/bridge/status/:sessionId` - Check session status
+- WebSocket: `/ws/bridge?sessionId=XXX&role=desktop|mobile`
+
+### Supported Chains
+- **EVM**: Ethereum, BNB Chain, Polygon, Arbitrum, Avalanche
+- **Non-EVM**: Bitcoin (all address types), Solana, TRON
+
+### Build Commands
+- `npm run dev` - Development server
+- `npm run build` - Production build
+- `npx cap sync android` - Sync web assets to Android
+- `cd android && ./gradlew assembleDebug` - Build Android APK
 
 ### Path Aliases
 - `@/*` → `client/src/*`
 - `@shared/*` → `shared/*`
 - `@assets/*` → `attached_assets/*`
 
-## External Dependencies
+## Important Constraints
 
-### Database
-- **PostgreSQL**: Primary database (requires `DATABASE_URL` environment variable)
-- **Drizzle Kit**: Database migrations via `npm run db:push`
-
-### UI Libraries
-- **Radix UI**: Headless component primitives (dialog, dropdown, tabs, etc.)
-- **Lucide React**: Icon library
-- **Tailwind CSS**: Utility-first CSS framework
-- **class-variance-authority**: Component variant management
-
-### Data & Forms
-- **TanStack React Query**: Server state management and caching
-- **React Hook Form**: Form handling with `@hookform/resolvers`
-- **Zod**: Schema validation
-
-### Development Tools
-- **Replit Plugins**: Runtime error overlay, cartographer, dev banner (dev only)
-- **TypeScript**: Full type safety across the stack
+1. **No WebAssembly**: All crypto must be pure JavaScript (Pico wallet requirement)
+2. **No vite.config.ts changes**: Existing Vite setup must not be modified
+3. **USB on Desktop only**: Mobile devices use bridge for Pico connection
+4. **PIN Security**: 4-6 digit PIN required, session locks after 5 min idle

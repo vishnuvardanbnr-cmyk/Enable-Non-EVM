@@ -12,6 +12,7 @@ import {
   Link2,
   Cpu,
   Laptop,
+  Smartphone,
 } from "lucide-react";
 import {
   Sidebar,
@@ -66,6 +67,11 @@ const menuItems = [
     title: "Setup Guide",
     url: "/setup",
     icon: BookOpen,
+  },
+  {
+    title: "Mobile Bridge",
+    url: "/bridge",
+    icon: Smartphone,
   },
 ];
 

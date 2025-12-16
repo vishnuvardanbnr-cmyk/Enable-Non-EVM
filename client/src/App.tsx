@@ -20,6 +20,7 @@ import ManageCrypto from "@/pages/manage-crypto";
 import DApps from "@/pages/dapps";
 import DAppBrowser from "@/pages/dapp-browser";
 import TokenDetail from "@/pages/token-detail";
+import Bridge from "@/pages/bridge";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -34,6 +35,7 @@ function Router() {
       <Route path="/manage-crypto" component={ManageCrypto} />
       <Route path="/dapps" component={DApps} />
       <Route path="/dapp-browser" component={DAppBrowser} />
+      <Route path="/bridge" component={Bridge} />
       <Route component={NotFound} />
     </Switch>
   );
