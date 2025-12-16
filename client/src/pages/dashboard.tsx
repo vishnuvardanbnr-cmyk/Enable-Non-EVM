@@ -84,6 +84,25 @@ const CRYPTO_ICONS: Record<string, string> = {
   'osmosis': `${COINGECKO_CDN}/16724/small/osmo.png`,
 };
 
+// Map chain-specific token IDs to base token IDs for icon lookup
+// e.g., 'tether-bsc' -> 'tether', 'usd-coin-ethereum' -> 'usd-coin'
+const TOKEN_BASE_ID: Record<string, string> = {
+  'tether-bsc': 'tether',
+  'tether-tron': 'tether',
+  'tether-ethereum': 'tether',
+  'usd-coin-bsc': 'usd-coin',
+  'usd-coin-ethereum': 'usd-coin',
+  'usd-coin-solana': 'usd-coin',
+};
+
+function getAssetIcon(assetId: string, assetImage?: string): string | undefined {
+  if (assetImage) return assetImage;
+  if (CRYPTO_ICONS[assetId]) return CRYPTO_ICONS[assetId];
+  const baseId = TOKEN_BASE_ID[assetId];
+  if (baseId && CRYPTO_ICONS[baseId]) return CRYPTO_ICONS[baseId];
+  return undefined;
+}
+
 // View state for hierarchical navigation: chains -> wallets -> tokens
 type ViewLevel = 'chains' | 'wallets' | 'tokens';
 
@@ -133,9 +152,9 @@ function CombinedAssetCard({ asset, wallet, chain, prices, tokenBalance }: Combi
       <CardContent className="p-3 sm:p-4 flex flex-col h-full">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0 flex-1">
-            {(asset.image || CRYPTO_ICONS[asset.id]) ? (
+            {getAssetIcon(asset.id, asset.image) ? (
               <img
-                src={asset.image || CRYPTO_ICONS[asset.id] || ''}
+                src={getAssetIcon(asset.id, asset.image)}
                 alt={asset.name}
                 className="h-10 w-10 rounded-full bg-muted shrink-0"
                 onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
@@ -1498,9 +1517,9 @@ export default function Dashboard() {
                     <Card key={token.id} data-testid={`card-token-${token.id}`}>
                       <CardContent className="p-4">
                         <div className="flex items-center gap-4">
-                          {(token.image || CRYPTO_ICONS[token.id]) ? (
+                          {getAssetIcon(token.id, token.image) ? (
                             <img
-                              src={token.image || CRYPTO_ICONS[token.id] || ''}
+                              src={getAssetIcon(token.id, token.image)}
                               alt={token.name}
                               className="h-10 w-10 rounded-full bg-muted"
                               onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
