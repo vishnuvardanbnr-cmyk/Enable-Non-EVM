@@ -1340,26 +1340,31 @@ export function HardwareStatusCard() {
     <>
       <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-muted-foreground/30 bg-muted/20 p-8 text-center">
         {walletMode === "hard_wallet" ? (
-          <div className="mb-4 relative h-32 w-24 overflow-hidden">
-            <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-20 h-20 rounded-xl border-4 border-primary/40 bg-background flex items-end justify-center overflow-hidden">
-              <div className="absolute top-2 left-1/2 -translate-x-1/2 w-3 h-1 rounded-full bg-primary/30" />
-              <motion.div
-                className="absolute -top-12 left-1/2 -translate-x-1/2"
-                animate={{ y: [0, 24, 24, 0] }}
-                transition={{
-                  duration: 2.5,
-                  repeat: Infinity,
-                  ease: "easeInOut",
-                  times: [0, 0.4, 0.6, 1],
-                }}
-              >
-                <div className="w-8 h-14 rounded-md bg-primary/80 border-2 border-primary flex flex-col items-center justify-center gap-1">
-                  <div className="w-4 h-1 rounded-full bg-background/60" />
-                  <div className="w-4 h-1 rounded-full bg-background/60" />
-                  <Usb className="h-3 w-3 text-background/80 mt-1" />
-                </div>
-              </motion.div>
+          <div className="mb-4 relative h-36 w-32 flex items-center justify-center">
+            <div className="relative w-20 h-32 rounded-2xl border-2 border-muted-foreground/30 bg-muted/30 overflow-hidden">
+              <div className="absolute top-1.5 left-1/2 -translate-x-1/2 w-6 h-1.5 rounded-full bg-muted-foreground/20" />
+              <div className="absolute inset-2 top-4 rounded-lg bg-background/50" />
+              <div className="absolute bottom-1 left-1/2 -translate-x-1/2 w-4 h-4 rounded-full border border-muted-foreground/20" />
+              <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-3 h-2 bg-muted-foreground/30 rounded-b-sm" />
             </div>
+            <motion.div
+              className="absolute -bottom-2 left-1/2 -translate-x-1/2"
+              animate={{ y: [-20, 0, 0, -20] }}
+              transition={{
+                duration: 2,
+                repeat: Infinity,
+                ease: "easeInOut",
+                times: [0, 0.35, 0.65, 1],
+              }}
+            >
+              <div className="flex flex-col items-center">
+                <div className="w-2.5 h-1.5 bg-primary rounded-t-sm" />
+                <div className="w-1.5 h-8 bg-primary/70 rounded-sm" />
+                <div className="w-3 h-2 bg-primary/50 rounded-b-md flex items-center justify-center">
+                  <div className="w-1.5 h-1 bg-primary/80 rounded-sm" />
+                </div>
+              </div>
+            </motion.div>
           </div>
         ) : (
           <div className="mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-primary/10">
