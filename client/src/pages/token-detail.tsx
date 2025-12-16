@@ -42,6 +42,7 @@ const CRYPTO_ICONS: Record<string, string> = {
   'solana': `${COINGECKO_CDN}/4128/small/solana.png`,
   'usd-coin': `${JSDELIVR_CDN}/usdc.png`,
   'tron': `${JSDELIVR_CDN}/trx.png`,
+  'staked-ether': `${COINGECKO_CDN}/13442/small/steth_logo.png`,
 };
 
 const TOKEN_BASE_ID: Record<string, string> = {
@@ -51,6 +52,7 @@ const TOKEN_BASE_ID: Record<string, string> = {
   'usd-coin-bsc': 'usd-coin',
   'usd-coin-ethereum': 'usd-coin',
   'usd-coin-solana': 'usd-coin',
+  'staked-ether-ethereum': 'staked-ether',
 };
 
 function getTokenIcon(tokenId: string, tokenImage?: string): string | undefined {

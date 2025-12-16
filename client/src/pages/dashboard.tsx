@@ -93,6 +93,7 @@ const TOKEN_BASE_ID: Record<string, string> = {
   'usd-coin-bsc': 'usd-coin',
   'usd-coin-ethereum': 'usd-coin',
   'usd-coin-solana': 'usd-coin',
+  'staked-ether-ethereum': 'staked-ether',
 };
 
 function getAssetIcon(assetId: string, assetImage?: string): string | undefined {
