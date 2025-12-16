@@ -24,6 +24,13 @@ export interface PiWalletResponse {
   seed?: string;
   signature?: string;
   pong?: boolean;
+  chains?: string[];
+}
+
+export interface StoredChainPreference {
+  symbol: string;
+  accountIndex: number;
+  label?: string;
 }
 
 export interface PiWalletStatus {
@@ -360,6 +367,59 @@ class PiWalletService {
     } catch {
       return false;
     }
+  }
+
+  async saveChains(chains: StoredChainPreference[]): Promise<boolean> {
+    if (!this.currentPin) {
+      throw new Error("Wallet must be unlocked to save chains");
+    }
+    try {
+      const response = await this.sendCommand("save_chains", { 
+        pin: this.currentPin, 
+        chains: JSON.stringify(chains) 
+      });
+      if (response.error === "unsupported_command") {
+        console.log("[PiWallet] Device does not support chain storage - using fallback");
+        return false;
+      }
+      return response.success === true;
+    } catch (error: any) {
+      if (error.message?.includes("unsupported") || error.message?.includes("unknown")) {
+        console.log("[PiWallet] Device does not support chain storage - using fallback");
+        return false;
+      }
+      throw error;
+    }
+  }
+
+  async getChains(): Promise<StoredChainPreference[] | null> {
+    if (!this.currentPin) {
+      throw new Error("Wallet must be unlocked to get chains");
+    }
+    try {
+      const response = await this.sendCommand("get_chains", { pin: this.currentPin });
+      if (response.error === "unsupported_command") {
+        console.log("[PiWallet] Device does not support chain storage - using fallback");
+        return null;
+      }
+      if (response.chains) {
+        if (typeof response.chains === "string") {
+          return JSON.parse(response.chains);
+        }
+        return response.chains as unknown as StoredChainPreference[];
+      }
+      return [];
+    } catch (error: any) {
+      if (error.message?.includes("unsupported") || error.message?.includes("unknown") || error.message?.includes("timed out")) {
+        console.log("[PiWallet] Device does not support chain storage or command timed out - using fallback");
+        return null;
+      }
+      throw error;
+    }
+  }
+
+  supportsChainStorage(): boolean {
+    return true;
   }
 }
 
