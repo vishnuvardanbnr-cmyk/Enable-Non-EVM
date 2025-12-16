@@ -645,34 +645,41 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
       // In soft wallet mode, ONLY show soft wallet data
       return softWallets;
     } else {
-      // In hard wallet mode, ONLY show hard wallet data when device is connected
-      const hardConnected = hardwareState.status === "connected" || hardwareState.status === "unlocked";
-      return hardConnected ? hardWallets : [];
+      // In hard wallet mode, ONLY show hard wallet data when device is UNLOCKED (not just connected)
+      // This ensures addresses are not visible until PIN is entered
+      return hardwareState.status === "unlocked" ? hardWallets : [];
     }
   }, [walletMode, softWallets, hardWallets, hardwareState.status]);
 
   // Track last hard wallet connection status for triggering balance refresh
   const lastHardConnectedRef = useRef<boolean>(false);
   
-  // Sync wallets array from modeBasedWallets when hard wallet connects or mode changes
+  // Sync wallets array from modeBasedWallets when hard wallet UNLOCKS or mode changes
   // This ensures the wallets array is populated for components that depend on it
+  // IMPORTANT: Only sync when UNLOCKED, not just connected - this protects sensitive data
   useEffect(() => {
     if (isModeSwitchingRef.current) return; // Don't sync during mode switch
     
     if (walletMode === "hard_wallet") {
-      const hardConnected = hardwareState.status === "connected" || hardwareState.status === "unlocked";
+      // Only use unlocked status, not connected - addresses should only show after PIN
+      const hardUnlocked = hardwareState.status === "unlocked";
       
-      // Detect when hard wallet just connected (transition from not connected to connected)
-      const justConnected = hardConnected && !lastHardConnectedRef.current;
-      lastHardConnectedRef.current = hardConnected;
+      // Detect when hard wallet just unlocked (transition from not unlocked to unlocked)
+      const justUnlocked = hardUnlocked && !lastHardConnectedRef.current;
+      lastHardConnectedRef.current = hardUnlocked;
       
-      if (hardConnected && hardWallets.length > 0) {
+      if (hardUnlocked && hardWallets.length > 0) {
         // Clear the fetched wallet IDs ref so balances get fetched fresh
-        // This happens on initial sync OR when hard wallet reconnects
-        if (wallets.length === 0 || justConnected) {
+        // This happens on initial sync OR when hard wallet unlocks
+        if (wallets.length === 0 || justUnlocked) {
           fetchedWalletIdsRef.current = new Set();
           // Clone hardWallets to ensure React detects the state change
           setWallets([...hardWallets]);
+        }
+      } else if (!hardUnlocked) {
+        // When locked, clear visible wallets
+        if (wallets.length > 0 && wallets[0]?.deviceId === "hard") {
+          setWallets([]);
         }
       }
     } else {
