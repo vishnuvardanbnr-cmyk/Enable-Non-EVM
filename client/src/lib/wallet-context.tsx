@@ -145,8 +145,9 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
   const visibleWallets = useMemo(() => {
     // Use modeBasedWallets which is computed synchronously from current mode
     // This prevents hard wallet data from appearing in soft wallet mode during rapid switches
+    // For hard wallet mode, only show wallets when actually unlocked (not just connected)
     const walletsToFilter = walletMode === "soft_wallet" ? softWallets : 
-      (hardwareState.status === "connected" || hardwareState.status === "unlocked" ? hardWallets : []);
+      (hardwareState.status === "unlocked" ? hardWallets : []);
     return walletsToFilter.filter(w => w.accountIndex === selectedAccountIndex);
   }, [walletMode, softWallets, hardWallets, hardwareState.status, selectedAccountIndex]);
 
