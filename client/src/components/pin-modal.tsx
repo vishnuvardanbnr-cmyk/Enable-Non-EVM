@@ -9,8 +9,15 @@ import { useToast } from "@/hooks/use-toast";
 import { hardwareWallet } from "@/lib/hardware-wallet";
 import { softWallet } from "@/lib/soft-wallet";
 import { piWallet } from "@/lib/pi-wallet";
-import { broadcastTransaction, getGasPrice, getNonce } from "@/lib/blockchain";
 import { clientStorage, type StoredTransaction } from "@/lib/client-storage";
+import { 
+  buildTransaction, 
+  broadcastTransaction, 
+  getChainSymbol, 
+  isChainSupported,
+  getTokenContract,
+  type TransactionParams 
+} from "@/lib/transaction-service";
 
 export function PinModal() {
   const { 
@@ -91,34 +98,97 @@ export function PinModal() {
           await deriveWallets();
           
           if (pinAction === "sign" && pendingTransaction) {
-            const chainId = parseInt(pendingTransaction.chainId.replace("chain-", ""));
-            const chainIdMap: Record<number, number> = { 0: 1, 1: 56, 2: 137, 3: 43114, 4: 42161 };
-            const actualChainId = chainIdMap[chainId] || 1;
+            const chainSupport = isChainSupported(pendingTransaction.chainId);
             
-            const gasPrice = await getGasPrice(actualChainId);
+            if (!chainSupport.supported) {
+              toast({
+                title: "Chain Not Supported",
+                description: chainSupport.reason || "This chain is not yet supported for transactions",
+                variant: "destructive",
+              });
+              setPendingTransaction(null);
+              setShowPinModal(false);
+              setPinAction(null);
+              setIsLoading(false);
+              return;
+            }
+
+            const evmChainIdForAddress = chainSupport.evmChainId || 1;
             const walletAddress = walletMode === "soft_wallet" 
-              ? await softWallet.getAddress(actualChainId)
-              : await hardwareWallet.getAddress(actualChainId);
-            const nonce = walletAddress ? await getNonce(walletAddress, actualChainId) : 0;
+              ? await softWallet.getAddress(evmChainIdForAddress)
+              : await hardwareWallet.getAddress(evmChainIdForAddress);
             
-            const txRequest = {
+            if (!walletAddress) {
+              toast({
+                title: "Wallet Error",
+                description: "Could not get wallet address",
+                variant: "destructive",
+              });
+              setPendingTransaction(null);
+              setShowPinModal(false);
+              setPinAction(null);
+              setIsLoading(false);
+              return;
+            }
+
+            let tokenContract: { address: string; decimals: number } | null = null;
+            if (!pendingTransaction.isNativeToken && pendingTransaction.tokenSymbol) {
+              const contractInfo = getTokenContract(pendingTransaction.tokenSymbol, pendingTransaction.chainId);
+              if (contractInfo) {
+                tokenContract = { address: contractInfo.address, decimals: contractInfo.decimals };
+              } else if (pendingTransaction.tokenContractAddress) {
+                tokenContract = { address: pendingTransaction.tokenContractAddress, decimals: 18 };
+              }
+            }
+
+            const txParams: TransactionParams = {
+              chainId: pendingTransaction.chainId,
+              from: walletAddress,
               to: pendingTransaction.toAddress,
-              value: BigInt(Math.floor(parseFloat(pendingTransaction.amount) * 1e18)),
-              chainId: actualChainId,
-              gasLimit: BigInt(21000),
-              gasPrice: gasPrice || BigInt(20000000000),
-              nonce: nonce || 0,
+              amount: pendingTransaction.amount,
+              tokenSymbol: pendingTransaction.tokenSymbol,
+              tokenContractAddress: tokenContract?.address || pendingTransaction.tokenContractAddress,
+              isNativeToken: pendingTransaction.isNativeToken ?? true,
+              decimals: tokenContract?.decimals,
             };
+
+            const txResult = await buildTransaction(txParams);
             
+            if (!txResult) {
+              toast({
+                title: "Transaction Build Failed",
+                description: "Could not build transaction. Please try again.",
+                variant: "destructive",
+              });
+              setPendingTransaction(null);
+              setShowPinModal(false);
+              setPinAction(null);
+              setIsLoading(false);
+              return;
+            }
+
+            if (!txResult.tx) {
+              toast({
+                title: "Transaction Error",
+                description: "Could not build transaction data. Please try again.",
+                variant: "destructive",
+              });
+              setPendingTransaction(null);
+              setShowPinModal(false);
+              setPinAction(null);
+              setIsLoading(false);
+              return;
+            }
+
             const signedTx = walletMode === "soft_wallet"
-              ? await softWallet.signTransaction(txRequest)
-              : await hardwareWallet.signTransaction(txRequest);
+              ? await softWallet.signTransaction(txResult.tx)
+              : await hardwareWallet.signTransaction(txResult.tx);
             
             if (signedTx) {
-              const result = await broadcastTransaction(signedTx, actualChainId);
+              const result = await broadcastTransaction(signedTx, txResult.chainType, txResult.evmChainId);
               
               if (result.success) {
-                const chainSymbols: Record<number, string> = { 1: "ETH", 56: "BNB", 137: "MATIC", 43114: "AVAX", 42161: "ETH" };
+                const chainSymbol = getChainSymbol(pendingTransaction.chainId);
                 const storedTx: StoredTransaction = {
                   id: `tx-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
                   walletId: pendingTransaction.chainId,
@@ -126,9 +196,9 @@ export function PinModal() {
                   type: "send",
                   status: "confirmed",
                   amount: pendingTransaction.amount,
-                  tokenSymbol: chainSymbols[actualChainId] || "ETH",
+                  tokenSymbol: pendingTransaction.tokenSymbol || chainSymbol,
                   toAddress: pendingTransaction.toAddress,
-                  fromAddress: walletAddress || "",
+                  fromAddress: walletAddress,
                   txHash: result.txHash,
                   timestamp: new Date().toISOString(),
                 };
@@ -139,7 +209,6 @@ export function PinModal() {
                   description: `Transaction broadcast successfully. Hash: ${result.txHash?.slice(0, 10)}...`,
                 });
                 
-                // Refresh balances after successful transaction
                 refreshBalances();
               } else {
                 toast({
@@ -147,8 +216,6 @@ export function PinModal() {
                   description: result.error || "Failed to broadcast transaction",
                   variant: "destructive",
                 });
-                
-                // Refresh balances after failed transaction to show current state
                 refreshBalances();
               }
             } else {
@@ -157,8 +224,6 @@ export function PinModal() {
                 description: "Could not sign the transaction",
                 variant: "destructive",
               });
-              
-              // Refresh balances after signing failure
               refreshBalances();
             }
             setPendingTransaction(null);
@@ -182,7 +247,7 @@ export function PinModal() {
         setIsLoading(false);
       }
     }
-  }, [pinAction, pin, unlockWallet, deriveWallets, pendingTransaction, setPendingTransaction, setShowPinModal, setPinAction, toast, refreshBalances]);
+  }, [pinAction, pin, unlockWallet, deriveWallets, pendingTransaction, setPendingTransaction, setShowPinModal, setPinAction, toast, refreshBalances, walletMode]);
 
   useEffect(() => {
     if ((pinAction === "unlock" || pinAction === "sign") && pin.length === maxLength) {
