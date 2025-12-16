@@ -1348,8 +1348,8 @@ export function HardwareStatusCard() {
               <div className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-3 h-1.5 bg-muted-foreground/40 rounded-b-sm" />
             </div>
             <motion.div
-              className="mt-1"
-              animate={{ y: [6, 0, 0, 6] }}
+              className="-mt-1"
+              animate={{ y: [8, -2, -2, 8] }}
               transition={{
                 duration: 3,
                 repeat: Infinity,
