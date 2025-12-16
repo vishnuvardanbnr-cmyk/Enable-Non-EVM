@@ -1343,9 +1343,9 @@ export function HardwareStatusCard() {
           <div className="mb-4 relative h-44 w-32 flex flex-col items-center">
             <div className="relative w-20 h-32 rounded-2xl border-2 border-muted-foreground/30 bg-muted/30">
               <div className="absolute top-1.5 left-1/2 -translate-x-1/2 w-6 h-1.5 rounded-full bg-muted-foreground/20" />
-              <div className="absolute inset-2 top-4 rounded-lg bg-background/50 flex flex-col items-center justify-center p-1">
+              <div className="absolute inset-2 top-4 rounded-lg bg-background/80 flex flex-col items-center justify-center p-1.5">
                 <motion.div
-                  className="text-center"
+                  className="text-center flex flex-col items-center gap-0.5"
                   animate={{ opacity: [0, 0, 1, 1, 1, 0, 0] }}
                   transition={{
                     duration: 7,
@@ -1353,8 +1353,14 @@ export function HardwareStatusCard() {
                     times: [0, 0.12, 0.18, 0.5, 0.82, 0.88, 1],
                   }}
                 >
-                  <p className="text-[6px] font-bold text-muted-foreground/80">VaultKey</p>
-                  <p className="text-[5px] text-green-600 dark:text-green-400">Hardware connected</p>
+                  <div className="w-3 h-3 rounded-full bg-primary/20 flex items-center justify-center mb-0.5">
+                    <Shield className="w-2 h-2 text-primary" />
+                  </div>
+                  <p className="text-[7px] font-bold text-foreground/90 leading-none">VaultKey</p>
+                  <div className="flex items-center gap-0.5 mt-0.5">
+                    <div className="w-1 h-1 rounded-full bg-green-500 animate-pulse" />
+                    <p className="text-[5px] font-medium text-green-600 dark:text-green-400 leading-none">Connected</p>
+                  </div>
                 </motion.div>
               </div>
               <div className="absolute bottom-1 left-1/2 -translate-x-1/2 w-4 h-4 rounded-full border border-muted-foreground/20" />
