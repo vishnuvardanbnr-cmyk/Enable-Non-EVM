@@ -26,6 +26,7 @@ import { ChainIcon } from "@/components/chain-icon";
 import { HardwareStatusCard } from "@/components/hardware-status";
 import { clientStorage, type CustomToken } from "@/lib/client-storage";
 import { formatCryptoBalance } from "@/lib/price-service";
+import { TOKEN_PARENT_CHAIN_SYMBOL } from "@/lib/chain-mappings";
 import type { Chain, Wallet } from "@shared/schema";
 
 interface TokenOption {
@@ -91,7 +92,7 @@ interface GasEstimate {
 }
 
 function SendTab({ chains, wallets, initialChainId, initialTokenId }: { chains: Chain[]; wallets: Wallet[]; initialChainId?: string; initialTokenId?: string }) {
-  const { setShowPinModal, setPinAction, setPendingTransaction } = useWallet();
+  const { setShowPinModal, setPinAction, setPendingTransaction, topAssets, enabledAssetIds } = useWallet();
   const [selectedChainId, setSelectedChainId] = useState<string>(initialChainId || "");
   const [selectedTokenId, setSelectedTokenId] = useState<string>(initialTokenId || "native");
   const isTokenLocked = !!initialTokenId;
@@ -141,6 +142,21 @@ function SendTab({ chains, wallets, initialChainId, initialTokenId }: { chains: 
         isNative: true,
       }];
 
+      // Add standard tokens from topAssets that match this chain
+      const chainSymbol = selectedChain.symbol;
+      topAssets.forEach(asset => {
+        const parentChainSymbol = TOKEN_PARENT_CHAIN_SYMBOL[asset.id];
+        if (parentChainSymbol === chainSymbol && enabledAssetIds.has(asset.id)) {
+          options.push({
+            id: asset.id,
+            symbol: asset.symbol.toUpperCase(),
+            name: asset.name,
+            balance: "0", // Token balance would need to be fetched
+            isNative: false,
+          });
+        }
+      });
+
       // Load wallet-specific custom tokens
       try {
         const customTokens = await clientStorage.getCustomTokens();
@@ -172,7 +188,7 @@ function SendTab({ chains, wallets, initialChainId, initialTokenId }: { chains: 
     }
 
     loadTokenOptions();
-  }, [selectedChainId, selectedChain, selectedWallet, initialTokenId]);
+  }, [selectedChainId, selectedChain, selectedWallet, initialTokenId, topAssets, enabledAssetIds]);
 
   const handleSend = () => {
     setError("");
