@@ -1359,10 +1359,12 @@ export function HardwareStatusCard() {
                   : <Usb className="mr-2 h-4 w-4" />}
                 Create Wallet
               </Button>
-              <Button variant="outline" onClick={() => setShowRecoverDialog(true)} data-testid="button-recover-wallet">
-                <RotateCcw className="mr-2 h-4 w-4" />
-                Recover Wallet
-              </Button>
+              {walletMode === "soft_wallet" && (
+                <Button variant="outline" onClick={() => setShowRecoverDialog(true)} data-testid="button-recover-wallet">
+                  <RotateCcw className="mr-2 h-4 w-4" />
+                  Recover Wallet
+                </Button>
+              )}
             </div>
           </>
         ) : !isUnlocked ? (
