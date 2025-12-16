@@ -399,7 +399,11 @@ class HardwareWalletService {
   async unlock(pin: string): Promise<boolean> {
     if (this.state.type === "raspberry_pi") {
       try {
-        await piWallet.unlock(pin);
+        if (this.usingMobileUsb) {
+          await mobileUsbSerial.unlock(pin);
+        } else {
+          await piWallet.unlock(pin);
+        }
         this.setState({ status: "unlocked" });
         this.startSessionTimeout();
         return true;
@@ -469,6 +473,9 @@ class HardwareWalletService {
 
     try {
       if (this.state.type === "raspberry_pi") {
+        if (this.usingMobileUsb) {
+          return await mobileUsbSerial.getAddress(chainId);
+        }
         return await piWallet.getAddress(chainId);
       }
 
@@ -500,6 +507,14 @@ class HardwareWalletService {
 
     try {
       if (this.state.type === "raspberry_pi") {
+        if (this.usingMobileUsb) {
+          const mobileAddresses = await mobileUsbSerial.getAddresses(chainIds);
+          return mobileAddresses.map(addr => ({
+            path: addr.path,
+            address: addr.address,
+            chainId: addr.chainId,
+          }));
+        }
         const piAddresses = await piWallet.getAddresses(chainIds);
         return piAddresses.map(addr => ({
           path: addr.path,
@@ -549,7 +564,7 @@ class HardwareWalletService {
 
     try {
       if (this.state.type === "raspberry_pi") {
-        return await piWallet.signTransaction({
+        const txData = {
           to: unsignedTx.to as string,
           value: unsignedTx.value?.toString() || "0",
           data: unsignedTx.data as string,
@@ -559,7 +574,11 @@ class HardwareWalletService {
           maxFeePerGas: unsignedTx.maxFeePerGas?.toString(),
           maxPriorityFeePerGas: unsignedTx.maxPriorityFeePerGas?.toString(),
           chainId: Number(unsignedTx.chainId) || 1,
-        });
+        };
+        if (this.usingMobileUsb) {
+          return await mobileUsbSerial.signTransaction(txData);
+        }
+        return await piWallet.signTransaction(txData);
       }
 
       if (this.state.type === "simulated") {
@@ -656,6 +675,9 @@ class HardwareWalletService {
 
     try {
       if (this.state.type === "raspberry_pi") {
+        if (this.usingMobileUsb) {
+          return await mobileUsbSerial.signMessage(message);
+        }
         return await piWallet.signMessage(message);
       }
 
@@ -700,7 +722,11 @@ class HardwareWalletService {
   async disconnect(): Promise<void> {
     this.clearSessionTimeout();
     if (this.state.type === "raspberry_pi") {
-      await piWallet.disconnect();
+      if (this.usingMobileUsb) {
+        await mobileUsbSerial.disconnect();
+      } else {
+        await piWallet.disconnect();
+      }
     }
     if (this.transport) {
       await this.transport.close();
@@ -710,6 +736,7 @@ class HardwareWalletService {
     this.simulatedSeedPhrase = null;
     this.simulatedPinHash = null;
     this.picoHasWallet = false;
+    this.usingMobileUsb = false;
     this.setState({
       type: null,
       status: "disconnected",
@@ -722,7 +749,11 @@ class HardwareWalletService {
     if (this.state.status === "unlocked") {
       this.clearSessionTimeout();
       if (this.state.type === "raspberry_pi") {
-        await piWallet.lock();
+        if (this.usingMobileUsb) {
+          await mobileUsbSerial.lock();
+        } else {
+          await piWallet.lock();
+        }
       }
       this.setState({ status: "connected" });
     }
@@ -771,6 +802,9 @@ class HardwareWalletService {
   async getSeedPhraseFromDevice(): Promise<string | null> {
     if (this.state.type === "raspberry_pi") {
       try {
+        if (this.usingMobileUsb) {
+          return await mobileUsbSerial.getSeedPhrase();
+        }
         return await piWallet.getSeedPhrase();
       } catch (error) {
         console.error("Failed to get seed phrase from device:", error);
@@ -801,7 +835,9 @@ class HardwareWalletService {
   async saveChainPreferences(chains: StoredChainPreference[]): Promise<boolean> {
     if (this.state.type === "raspberry_pi" && this.state.status === "unlocked") {
       try {
-        const saved = await piWallet.saveChains(chains);
+        const saved = this.usingMobileUsb 
+          ? await mobileUsbSerial.saveChains(chains)
+          : await piWallet.saveChains(chains);
         if (saved) {
           console.log("[HardwareWallet] Chain preferences saved to hardware");
           return true;
@@ -822,7 +858,9 @@ class HardwareWalletService {
   async getChainPreferences(): Promise<StoredChainPreference[] | null> {
     if (this.state.type === "raspberry_pi" && this.state.status === "unlocked") {
       try {
-        const chains = await piWallet.getChains();
+        const chains = this.usingMobileUsb
+          ? await mobileUsbSerial.getChains()
+          : await piWallet.getChains();
         if (chains !== null) {
           console.log("[HardwareWallet] Chain preferences loaded from hardware:", chains);
           return chains;

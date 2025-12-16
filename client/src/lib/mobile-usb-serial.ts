@@ -166,6 +166,103 @@ export class MobileUsbSerialService {
     return response.success === true;
   }
 
+  async getAddress(chainId: number): Promise<string | null> {
+    try {
+      const response = await this.sendCommand("get_address", { chain_id: chainId });
+      if (response.error) {
+        throw new Error(response.error);
+      }
+      return response.address || null;
+    } catch {
+      return null;
+    }
+  }
+
+  async getAddresses(chainIds: number[]): Promise<{ path: string; address: string; chainId: number }[]> {
+    try {
+      const response = await this.sendCommand("get_addresses", { chain_ids: chainIds });
+      if (response.error) {
+        throw new Error(response.error);
+      }
+      return response.addresses || [];
+    } catch {
+      return [];
+    }
+  }
+
+  async signTransaction(tx: {
+    to: string;
+    value: string;
+    data?: string;
+    nonce: number;
+    gasLimit: string;
+    gasPrice?: string;
+    maxFeePerGas?: string;
+    maxPriorityFeePerGas?: string;
+    chainId: number;
+  }): Promise<string | null> {
+    try {
+      const response = await this.sendCommand("sign_transaction", { tx });
+      if (response.error) {
+        throw new Error(response.error);
+      }
+      return response.signed_tx || null;
+    } catch {
+      return null;
+    }
+  }
+
+  async signMessage(message: string): Promise<string | null> {
+    try {
+      const response = await this.sendCommand("sign_message", { message });
+      if (response.error) {
+        throw new Error(response.error);
+      }
+      return response.signature || null;
+    } catch {
+      return null;
+    }
+  }
+
+  async lock(): Promise<boolean> {
+    try {
+      const response = await this.sendCommand("lock");
+      return response.success === true || response.locked === true;
+    } catch {
+      return false;
+    }
+  }
+
+  async getSeedPhrase(): Promise<string | null> {
+    try {
+      const response = await this.sendCommand("get_seed");
+      if (response.error) {
+        throw new Error(response.error);
+      }
+      return response.seed || null;
+    } catch {
+      return null;
+    }
+  }
+
+  async saveChains(chains: any[]): Promise<boolean> {
+    try {
+      const response = await this.sendCommand("save_chains", { chains });
+      return response.success === true;
+    } catch {
+      return false;
+    }
+  }
+
+  async getChains(): Promise<any[]> {
+    try {
+      const response = await this.sendCommand("get_chains");
+      return response.chains || [];
+    } catch {
+      return [];
+    }
+  }
+
   isConnectedSync(): boolean {
     return this.connected;
   }
