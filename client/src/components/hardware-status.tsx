@@ -91,7 +91,7 @@ export function HardwareStatus() {
       // Pre-select popular chains (ETH, BTC, SOL) using chain-${index} format
       const popularChains = new Set<string>();
       DEFAULT_CHAINS.forEach((chain, index) => {
-        if (['ETH', 'BTC', 'SOL'].includes(chain.symbol)) {
+        if (['ETH', 'BTC', 'SOL', 'BNB', 'TRX'].includes(chain.symbol)) {
           popularChains.add(`chain-${index}`);
         }
       });
@@ -332,7 +332,7 @@ export function HardwareStatus() {
           // Derive wallets for default chains (ETH, BTC, SOL)
           const defaultChainIds: string[] = [];
           DEFAULT_CHAINS.forEach((chain, index) => {
-            if (['ETH', 'BTC', 'SOL'].includes(chain.symbol)) {
+            if (['ETH', 'BTC', 'SOL', 'BNB', 'TRX'].includes(chain.symbol)) {
               defaultChainIds.push(`chain-${index}`);
             }
           });
@@ -942,7 +942,7 @@ export function HardwareStatusCard() {
     // Pre-select ETH, BTC, SOL by default
     const defaultSelected = new Set<string>();
     DEFAULT_CHAINS.forEach((chain, index) => {
-      if (['ETH', 'BTC', 'SOL'].includes(chain.symbol)) {
+      if (['ETH', 'BTC', 'SOL', 'BNB', 'TRX'].includes(chain.symbol)) {
         defaultSelected.add(`chain-${index}`);
       }
     });
@@ -1321,7 +1321,7 @@ export function HardwareStatusCard() {
           // Derive wallets for default chains (ETH, BTC, SOL)
           const defaultChainIds: string[] = [];
           DEFAULT_CHAINS.forEach((chain, index) => {
-            if (['ETH', 'BTC', 'SOL'].includes(chain.symbol)) {
+            if (['ETH', 'BTC', 'SOL', 'BNB', 'TRX'].includes(chain.symbol)) {
               defaultChainIds.push(`chain-${index}`);
             }
           });

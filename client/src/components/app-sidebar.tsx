@@ -44,6 +44,7 @@ const menuItems = [
     title: "Chains & Tokens",
     url: "/chains",
     icon: Layers,
+    softWalletOnly: true,
   },
   {
     title: "Manage Crypto",
@@ -182,7 +183,13 @@ export function AppSidebar() {
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu>
-              {menuItems.map((item) => {
+              {menuItems
+                .filter((item) => {
+                  // Hide soft wallet only items in hard wallet mode
+                  if (item.softWalletOnly && walletMode === "hard_wallet") return false;
+                  return true;
+                })
+                .map((item) => {
                 const isActive = location === item.url || 
                   (item.url !== "/" && location.startsWith(item.url));
                 
