@@ -109,6 +109,10 @@ function SendTab({ chains, wallets, initialChainId, initialTokenId }: { chains: 
 
   const { data: gasEstimate, isLoading: gasLoading } = useQuery<GasEstimate>({
     queryKey: ["/api/gas-estimate", selectedChainId],
+    queryFn: async () => {
+      const response = await fetch(`/api/gas-estimate?chainId=${selectedChainId}`);
+      return response.json();
+    },
     enabled: !!selectedChainId,
     refetchInterval: 30000,
   });
