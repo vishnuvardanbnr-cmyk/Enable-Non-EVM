@@ -1340,28 +1340,28 @@ export function HardwareStatusCard() {
     <>
       <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-muted-foreground/30 bg-muted/20 p-8 text-center">
         {walletMode === "hard_wallet" ? (
-          <div className="mb-4 relative h-36 w-32 flex items-center justify-center">
-            <div className="relative w-20 h-32 rounded-2xl border-2 border-muted-foreground/30 bg-muted/30 overflow-hidden">
+          <div className="mb-4 relative h-40 w-32 flex items-center justify-center">
+            <div className="relative w-20 h-32 rounded-2xl border-2 border-muted-foreground/30 bg-muted/30">
               <div className="absolute top-1.5 left-1/2 -translate-x-1/2 w-6 h-1.5 rounded-full bg-muted-foreground/20" />
               <div className="absolute inset-2 top-4 rounded-lg bg-background/50" />
               <div className="absolute bottom-1 left-1/2 -translate-x-1/2 w-4 h-4 rounded-full border border-muted-foreground/20" />
-              <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-3 h-2 bg-muted-foreground/30 rounded-b-sm" />
             </div>
             <motion.div
-              className="absolute -bottom-2 left-1/2 -translate-x-1/2"
-              animate={{ y: [-20, 0, 0, -20] }}
+              className="absolute bottom-0 left-1/2 -translate-x-1/2"
+              animate={{ y: [8, 0, 0, 8] }}
               transition={{
-                duration: 2,
+                duration: 3,
                 repeat: Infinity,
                 ease: "easeInOut",
-                times: [0, 0.35, 0.65, 1],
+                times: [0, 0.3, 0.7, 1],
               }}
             >
               <div className="flex flex-col items-center">
-                <div className="w-2.5 h-1.5 bg-primary rounded-t-sm" />
-                <div className="w-1.5 h-8 bg-primary/70 rounded-sm" />
-                <div className="w-3 h-2 bg-primary/50 rounded-b-md flex items-center justify-center">
-                  <div className="w-1.5 h-1 bg-primary/80 rounded-sm" />
+                <div className="w-2.5 h-1 bg-muted-foreground/50 rounded-t-sm" />
+                <div className="w-6 h-10 bg-primary rounded-md border-2 border-primary flex flex-col items-center justify-center gap-0.5 shadow-sm">
+                  <div className="w-3 h-0.5 bg-background/50 rounded-full" />
+                  <div className="w-3 h-0.5 bg-background/50 rounded-full" />
+                  <Usb className="h-3 w-3 text-background/70 mt-0.5" />
                 </div>
               </div>
             </motion.div>
