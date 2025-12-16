@@ -31,6 +31,36 @@ const COINGECKO_ID_BY_SYMBOL: Record<string, string> = {
   'ARB': 'arbitrum',
 };
 
+const JSDELIVR_CDN = 'https://cdn.jsdelivr.net/npm/cryptocurrency-icons@0.16.1/128/color';
+const COINGECKO_CDN = 'https://assets.coingecko.com/coins/images';
+
+const CRYPTO_ICONS: Record<string, string> = {
+  'bitcoin': `${JSDELIVR_CDN}/btc.png`,
+  'ethereum': `${JSDELIVR_CDN}/eth.png`,
+  'tether': `${JSDELIVR_CDN}/usdt.png`,
+  'binancecoin': `${JSDELIVR_CDN}/bnb.png`,
+  'solana': `${COINGECKO_CDN}/4128/small/solana.png`,
+  'usd-coin': `${JSDELIVR_CDN}/usdc.png`,
+  'tron': `${JSDELIVR_CDN}/trx.png`,
+};
+
+const TOKEN_BASE_ID: Record<string, string> = {
+  'tether-bsc': 'tether',
+  'tether-tron': 'tether',
+  'tether-ethereum': 'tether',
+  'usd-coin-bsc': 'usd-coin',
+  'usd-coin-ethereum': 'usd-coin',
+  'usd-coin-solana': 'usd-coin',
+};
+
+function getTokenIcon(tokenId: string, tokenImage?: string): string | undefined {
+  if (tokenImage) return tokenImage;
+  if (CRYPTO_ICONS[tokenId]) return CRYPTO_ICONS[tokenId];
+  const baseId = TOKEN_BASE_ID[tokenId];
+  if (baseId && CRYPTO_ICONS[baseId]) return CRYPTO_ICONS[baseId];
+  return undefined;
+}
+
 const formatBalance = formatCryptoBalance;
 
 function formatDate(timestamp: string): string {
@@ -134,7 +164,19 @@ export default function TokenDetail() {
               <ArrowLeft className="h-5 w-5" />
             </Button>
             <div className="flex items-center gap-2">
-              <ChainIcon symbol={tokenSymbol || ""} size="md" />
+              {isNativeToken ? (
+                <ChainIcon symbol={tokenSymbol || ""} size="md" />
+              ) : getTokenIcon(tokenId || '', standardToken?.image) ? (
+                <img 
+                  src={getTokenIcon(tokenId || '', standardToken?.image)} 
+                  alt={tokenName || ''} 
+                  className="h-8 w-8 rounded-full bg-muted"
+                />
+              ) : (
+                <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-sm font-bold">
+                  {(tokenSymbol || '').slice(0, 2)}
+                </div>
+              )}
               <div>
                 <h1 className="text-lg font-semibold">{tokenName}</h1>
                 <p className="text-xs text-muted-foreground">{tokenSymbol}</p>
@@ -156,7 +198,19 @@ export default function TokenDetail() {
       <div className="p-4 space-y-6">
         <div className="text-center py-4">
           <div className="flex justify-center mb-4">
-            <ChainIcon symbol={tokenSymbol || ""} size="lg" />
+            {isNativeToken ? (
+              <ChainIcon symbol={tokenSymbol || ""} size="lg" />
+            ) : getTokenIcon(tokenId || '', standardToken?.image) ? (
+              <img 
+                src={getTokenIcon(tokenId || '', standardToken?.image)} 
+                alt={tokenName || ''} 
+                className="h-16 w-16 rounded-full bg-muted"
+              />
+            ) : (
+              <div className="h-16 w-16 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-2xl font-bold">
+                {(tokenSymbol || '').slice(0, 2)}
+              </div>
+            )}
           </div>
           <h2 className="text-3xl font-bold" data-testid="text-token-balance">
             {formatBalance(tokenBalance)} {tokenSymbol}
