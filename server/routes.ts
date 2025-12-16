@@ -28,8 +28,14 @@ const CHAIN_RPC_ENDPOINTS: Record<string, string> = {
 
 // Default gas limits for different chain types
 const DEFAULT_GAS_LIMITS: Record<string, number> = {
-  'chain-0': 21000, // ETH
-  'chain-3': 21000, // BNB
+  'chain-0': 21000, // ETH native transfer
+  'chain-3': 21000, // BNB native transfer
+};
+
+// Gas limits for ERC20 token transfers (higher due to contract interaction)
+const TOKEN_GAS_LIMITS: Record<string, number> = {
+  'chain-0': 65000, // ETH ERC20 transfer
+  'chain-3': 65000, // BNB BEP20 transfer
 };
 
 async function fetchGasPrice(chainId: string): Promise<{ gasPriceWei: bigint; gasPriceGwei: string } | null> {
@@ -72,6 +78,7 @@ export async function registerRoutes(
   // Gas estimate endpoint
   app.get('/api/gas-estimate', async (req, res) => {
     const chainId = req.query.chainId as string;
+    const isNative = req.query.isNative !== 'false'; // Default to true (native transfer)
     
     if (!chainId) {
       return res.json({
@@ -99,7 +106,10 @@ export async function registerRoutes(
     const gasData = await fetchGasPrice(chainId);
     
     if (gasData) {
-      const gasLimit = DEFAULT_GAS_LIMITS[chainId] || 21000;
+      // Use higher gas limit for token transfers vs native transfers
+      const gasLimit = isNative 
+        ? (DEFAULT_GAS_LIMITS[chainId] || 21000)
+        : (TOKEN_GAS_LIMITS[chainId] || 65000);
       const estimatedFeeWei = gasData.gasPriceWei * BigInt(gasLimit);
       const estimatedFee = (Number(estimatedFeeWei) / 1e18).toFixed(6);
       
@@ -110,6 +120,7 @@ export async function registerRoutes(
         estimatedFee,
         estimatedFeeUsd: null, // Would need price data to calculate
         symbol,
+        isTokenTransfer: !isNative,
       });
     }
 

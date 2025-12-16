@@ -107,10 +107,12 @@ function SendTab({ chains, wallets, initialChainId, initialTokenId }: { chains: 
   const selectedWallet = wallets.find((w) => w.chainId === selectedChainId);
   const selectedToken = tokenOptions.find(t => t.id === selectedTokenId) || tokenOptions[0];
 
+  const isNativeToken = selectedToken?.isNative ?? true;
+  
   const { data: gasEstimate, isLoading: gasLoading } = useQuery<GasEstimate>({
-    queryKey: ["/api/gas-estimate", selectedChainId],
+    queryKey: ["/api/gas-estimate", selectedChainId, isNativeToken],
     queryFn: async () => {
-      const response = await fetch(`/api/gas-estimate?chainId=${selectedChainId}`);
+      const response = await fetch(`/api/gas-estimate?chainId=${selectedChainId}&isNative=${isNativeToken}`);
       return response.json();
     },
     enabled: !!selectedChainId,
