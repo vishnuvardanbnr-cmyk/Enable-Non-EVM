@@ -530,10 +530,13 @@ export default function Dashboard() {
     }
   };
 
-  // Filter and sort enabled assets - only show assets with wallets
+  // Filter and sort enabled assets
+  // Only filter by wallet existence when wallet is unlocked and has wallets
   const filteredAssets = enabledAssets.filter(asset => {
-    // First check if asset has a wallet
-    if (!hasWalletForAsset(asset)) return false;
+    // Only filter by wallet if we have wallets (i.e., unlocked state)
+    if (isUnlocked && displayWallets.length > 0) {
+      if (!hasWalletForAsset(asset)) return false;
+    }
     
     // Then apply search filter
     if (!assetSearch.trim()) return true;
