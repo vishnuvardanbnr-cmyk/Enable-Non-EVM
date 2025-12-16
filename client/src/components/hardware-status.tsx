@@ -1343,7 +1343,20 @@ export function HardwareStatusCard() {
           <div className="mb-4 relative h-44 w-32 flex flex-col items-center">
             <div className="relative w-20 h-32 rounded-2xl border-2 border-muted-foreground/30 bg-muted/30">
               <div className="absolute top-1.5 left-1/2 -translate-x-1/2 w-6 h-1.5 rounded-full bg-muted-foreground/20" />
-              <div className="absolute inset-2 top-4 rounded-lg bg-background/50" />
+              <div className="absolute inset-2 top-4 rounded-lg bg-background/50 flex flex-col items-center justify-center p-1">
+                <motion.div
+                  className="text-center"
+                  animate={{ opacity: [0, 0, 1, 1, 1, 0, 0] }}
+                  transition={{
+                    duration: 7,
+                    repeat: Infinity,
+                    times: [0, 0.12, 0.18, 0.5, 0.82, 0.88, 1],
+                  }}
+                >
+                  <p className="text-[6px] font-bold text-muted-foreground/80">VaultKey</p>
+                  <p className="text-[5px] text-green-600 dark:text-green-400">Hardware connected</p>
+                </motion.div>
+              </div>
               <div className="absolute bottom-1 left-1/2 -translate-x-1/2 w-4 h-4 rounded-full border border-muted-foreground/20" />
               <div className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-3 h-1.5 bg-muted-foreground/40 rounded-b-sm" />
             </div>
