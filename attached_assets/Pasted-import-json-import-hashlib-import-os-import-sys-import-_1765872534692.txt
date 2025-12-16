@@ -1,0 +1,233 @@
+import json
+import hashlib
+import os
+import sys
+import time
+import ubinascii
+
+MAX_PIN_ATTEMPTS = 5
+LOCKOUT_TIME = 300
+WALLET_FILE = "wallet.json"
+
+class PicoWallet:
+    def __init__(self):
+        self.wallet_data = None
+        self.unlocked = False
+        self.failed_attempts = 0
+        self.lockout_until = 0
+        self.load_wallet()
+    
+    def load_wallet(self):
+        try:
+            with open(WALLET_FILE, "r") as f:
+                self.wallet_data = json.load(f)
+        except:
+            self.wallet_data = None
+    
+    def save_wallet(self):
+        with open(WALLET_FILE, "w") as f:
+            json.dump(self.wallet_data, f)
+    
+    def hash_pin(self, pin):
+        h = hashlib.sha256(pin.encode())
+        return ubinascii.hexlify(h.digest()).decode()
+    
+    def is_locked_out(self):
+        if self.lockout_until > time.time():
+            return True
+        return False
+    
+    def get_lockout_remaining(self):
+        if self.lockout_until > time.time():
+            return int(self.lockout_until - time.time())
+        return 0
+    
+    def setup(self, pin, seed_phrase):
+        if len(pin) < 4 or len(pin) > 6:
+            return {"error": "PIN must be 4-6 digits"}
+        
+        if not pin.isdigit():
+            return {"error": "PIN must be numbers only"}
+        
+        words = seed_phrase.strip().split()
+        if len(words) != 24:
+            return {"error": "Seed phrase must be 24 words"}
+        
+        pin_hash = self.hash_pin(pin)
+        encrypted_seed = self.encrypt_seed(seed_phrase, pin)
+        
+        self.wallet_data = {
+            "pin_hash": pin_hash,
+            "encrypted_seed": encrypted_seed,
+            "created": time.time()
+        }
+        self.save_wallet()
+        self.unlocked = True
+        self.failed_attempts = 0
+        
+        return {"success": True, "message": "Wallet created"}
+    
+    def encrypt_seed(self, seed, pin):
+        h = hashlib.sha256(pin.encode())
+        key = h.digest()
+        seed_bytes = seed.encode()
+        encrypted = bytes([seed_bytes[i] ^ key[i % len(key)] for i in range(len(seed_bytes))])
+        return ubinascii.hexlify(encrypted).decode()
+    
+    def decrypt_seed(self, encrypted_hex, pin):
+        h = hashlib.sha256(pin.encode())
+        key = h.digest()
+        encrypted = ubinascii.unhexlify(encrypted_hex)
+        decrypted = bytes([encrypted[i] ^ key[i % len(key)] for i in range(len(encrypted))])
+        return decrypted.decode()
+    
+    def unlock(self, pin):
+        if self.is_locked_out():
+            remaining = self.get_lockout_remaining()
+            return {"error": f"Locked out. Try again in {remaining} seconds"}
+        
+        if not self.wallet_data:
+            return {"error": "No wallet found. Run setup first"}
+        
+        pin_hash = self.hash_pin(pin)
+        
+        if pin_hash != self.wallet_data["pin_hash"]:
+            self.failed_attempts += 1
+            remaining = MAX_PIN_ATTEMPTS - self.failed_attempts
+            
+            if self.failed_attempts >= MAX_PIN_ATTEMPTS:
+                self.lockout_until = time.time() + LOCKOUT_TIME
+                self.failed_attempts = 0
+                return {"error": f"Too many attempts. Locked for {LOCKOUT_TIME} seconds"}
+            
+            return {"error": f"Wrong PIN. {remaining} attempts remaining"}
+        
+        self.unlocked = True
+        self.failed_attempts = 0
+        return {"success": True, "message": "Wallet unlocked"}
+    
+    def lock(self):
+        self.unlocked = False
+        return {"success": True, "message": "Wallet locked"}
+    
+    def get_status(self):
+        has_wallet = self.wallet_data is not None
+        return {
+            "has_wallet": has_wallet,
+            "unlocked": self.unlocked,
+            "locked_out": self.is_locked_out(),
+            "lockout_remaining": self.get_lockout_remaining()
+        }
+    
+    def get_seed(self, pin):
+        if not self.unlocked:
+            return {"error": "Wallet is locked"}
+        
+        pin_hash = self.hash_pin(pin)
+        if pin_hash != self.wallet_data["pin_hash"]:
+            return {"error": "Invalid PIN"}
+        
+        seed = self.decrypt_seed(self.wallet_data["encrypted_seed"], pin)
+        return {"seed": seed}
+    
+    def sign_message(self, message, pin):
+        if not self.unlocked:
+            return {"error": "Wallet is locked"}
+        
+        pin_hash = self.hash_pin(pin)
+        if pin_hash != self.wallet_data["pin_hash"]:
+            return {"error": "Invalid PIN for signing"}
+        
+        seed = self.decrypt_seed(self.wallet_data["encrypted_seed"], pin)
+        
+        h1 = hashlib.sha256((seed + message).encode())
+        sign_key = h1.digest()
+        h2 = hashlib.sha256(sign_key + message.encode())
+        signature = ubinascii.hexlify(h2.digest()).decode()
+        
+        return {"signature": signature}
+    
+    def reset(self, pin):
+        if not self.wallet_data:
+            return {"error": "No wallet to reset"}
+        
+        pin_hash = self.hash_pin(pin)
+        if pin_hash != self.wallet_data["pin_hash"]:
+            return {"error": "Invalid PIN"}
+        
+        try:
+            os.remove(WALLET_FILE)
+        except:
+            pass
+        
+        self.wallet_data = None
+        self.unlocked = False
+        return {"success": True, "message": "Wallet reset"}
+    
+    def factory_reset(self):
+        try:
+            os.remove(WALLET_FILE)
+        except:
+            pass
+        
+        self.wallet_data = None
+        self.unlocked = False
+        self.failed_attempts = 0
+        self.lockout_until = 0
+        return {"success": True, "message": "Factory reset complete"}
+
+
+def main():
+    wallet = PicoWallet()
+    print("PICO_WALLET_READY")
+    
+    while True:
+        try:
+            line = sys.stdin.readline().strip()
+            if not line:
+                continue
+            
+            try:
+                cmd = json.loads(line)
+            except:
+                print(json.dumps({"error": "Invalid JSON"}))
+                continue
+            
+            action = cmd.get("action", "")
+            
+            if action == "status":
+                result = wallet.get_status()
+            elif action == "setup":
+                pin = cmd.get("pin", "")
+                seed = cmd.get("seed", "")
+                result = wallet.setup(pin, seed)
+            elif action == "unlock":
+                pin = cmd.get("pin", "")
+                result = wallet.unlock(pin)
+            elif action == "lock":
+                result = wallet.lock()
+            elif action == "sign":
+                pin = cmd.get("pin", "")
+                message = cmd.get("message", "")
+                result = wallet.sign_message(message, pin)
+            elif action == "get_seed":
+                pin = cmd.get("pin", "")
+                result = wallet.get_seed(pin)
+            elif action == "reset":
+                pin = cmd.get("pin", "")
+                result = wallet.reset(pin)
+            elif action == "factory_reset":
+                result = wallet.factory_reset()
+            elif action == "ping":
+                result = {"pong": True}
+            else:
+                result = {"error": f"Unknown action: {action}"}
+            
+            print(json.dumps(result))
+        
+        except Exception as e:
+            print(json.dumps({"error": str(e)}))
+
+
+if __name__ == "__main__":
+    main()
