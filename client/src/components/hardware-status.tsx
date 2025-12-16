@@ -329,7 +329,14 @@ export function HardwareStatus() {
         hardwareWallet.setHasWalletOnDevice(true);
         const unlocked = await unlockWallet(headerPicoPin);
         if (unlocked) {
-          await deriveWallets();
+          // Derive wallets for default chains (ETH, BTC, SOL)
+          const defaultChainIds: string[] = [];
+          DEFAULT_CHAINS.forEach((chain, index) => {
+            if (['ETH', 'BTC', 'SOL'].includes(chain.symbol)) {
+              defaultChainIds.push(`chain-${index}`);
+            }
+          });
+          await deriveWallets(defaultChainIds);
           setShowHeaderPicoSetupDialog(false);
           setHeaderPicoGeneratedSeed("");
           setHeaderPicoImportSeed("");
@@ -1311,7 +1318,14 @@ export function HardwareStatusCard() {
         const unlocked = await unlockWallet(picoNewPin);
         
         if (unlocked) {
-          await deriveWallets();
+          // Derive wallets for default chains (ETH, BTC, SOL)
+          const defaultChainIds: string[] = [];
+          DEFAULT_CHAINS.forEach((chain, index) => {
+            if (['ETH', 'BTC', 'SOL'].includes(chain.symbol)) {
+              defaultChainIds.push(`chain-${index}`);
+            }
+          });
+          await deriveWallets(defaultChainIds);
           
           setShowPicoSetupDialog(false);
           setPicoGeneratedSeed("");
