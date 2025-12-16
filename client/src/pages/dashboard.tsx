@@ -109,7 +109,11 @@ const COINGECKO_ID_TO_CHAIN_SYMBOL: Record<string, string> = {
 
 const TOKEN_PARENT_CHAIN: Record<string, string> = {
   'tether': 'Ethereum',
+  'tether-bsc': 'BNB Chain',
+  'tether-tron': 'TRON',
   'usd-coin': 'Ethereum',
+  'usd-coin-bsc': 'BNB Chain',
+  'usd-coin-tron': 'TRON',
   'staked-ether': 'Ethereum',
   'chainlink': 'Ethereum',
   'wrapped-bitcoin': 'Ethereum',
