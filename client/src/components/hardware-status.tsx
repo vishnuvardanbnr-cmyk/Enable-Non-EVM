@@ -1357,7 +1357,7 @@ export function HardwareStatusCard() {
                 {walletMode === "soft_wallet" 
                   ? <Laptop className="mr-2 h-4 w-4" />
                   : <Usb className="mr-2 h-4 w-4" />}
-                Create Wallet
+                {walletMode === "soft_wallet" ? "Create Wallet" : "Connect Wallet"}
               </Button>
               {walletMode === "soft_wallet" && (
                 <Button variant="outline" onClick={() => setShowRecoverDialog(true)} data-testid="button-recover-wallet">
