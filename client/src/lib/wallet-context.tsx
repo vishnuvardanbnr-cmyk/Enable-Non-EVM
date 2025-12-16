@@ -1015,6 +1015,17 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
             await clientStorage.saveHardWalletData(walletsToSave);
             await clientStorage.setHardWalletSetup(true);
             setHasHardWalletSetup(true);
+            
+            // Save chain preferences to hardware for portability
+            const chainPrefs = newWallets.map(w => {
+              const chain = targetChains.find(c => c.id === w.chainId);
+              return {
+                symbol: chain?.symbol || "",
+                accountIndex: w.accountIndex,
+                label: w.label,
+              };
+            });
+            await hardwareWallet.saveChainPreferences(chainPrefs);
           }
         }
       } else {
@@ -1443,19 +1454,36 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
         return false;
       }
 
-      // Derive address for this chain
-      const addresses = await softWallet.deriveAddresses([targetChain.symbol], 0);
-      if (addresses.length === 0) {
-        setPendingAddChain(null);
-        return false;
+      let derivedAddress: string | null = null;
+      
+      if (walletMode === "soft_wallet") {
+        // Derive address using soft wallet
+        const addresses = await softWallet.deriveAddresses([targetChain.symbol], 0);
+        if (addresses.length === 0) {
+          setPendingAddChain(null);
+          return false;
+        }
+        derivedAddress = addresses[0].address;
+      } else {
+        // Derive address using hardware wallet
+        const mnemonic = await hardwareWallet.getSeedPhraseFromDevice();
+        if (!mnemonic) {
+          setPendingAddChain(null);
+          return false;
+        }
+        const derivedAddresses = await deriveAllAddresses(mnemonic, [targetChain.symbol], 0);
+        if (derivedAddresses.length === 0 || !derivedAddresses[0].address) {
+          setPendingAddChain(null);
+          return false;
+        }
+        derivedAddress = derivedAddresses[0].address;
       }
 
-      const address = addresses[0];
       const newWallet: Wallet = {
         id: `wallet-${chainId}-${Date.now()}`,
-        deviceId: "soft",
+        deviceId: walletMode === "soft_wallet" ? "soft" : "hard",
         chainId: chainId,
-        address: address.address,
+        address: derivedAddress,
         balance: "0",
         isActive: true,
         accountIndex: 0,
@@ -1495,6 +1523,17 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
           await clientStorage.saveSoftWalletData(walletsToSave);
         } else {
           await clientStorage.saveHardWalletData(walletsToSave);
+          
+          // Save chain preferences to hardware for portability
+          const chainPrefs = updatedWallets.map(w => {
+            const chain = chains.find(c => c.id === w.chainId);
+            return {
+              symbol: chain?.symbol || "",
+              accountIndex: w.accountIndex,
+              label: w.label,
+            };
+          });
+          await hardwareWallet.saveChainPreferences(chainPrefs);
         }
       }
 
@@ -1547,6 +1586,17 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
         await clientStorage.saveSoftWalletData(walletsToSave);
       } else {
         await clientStorage.saveHardWalletData(walletsToSave);
+        
+        // Save chain preferences to hardware for portability
+        const chainPrefs = updatedWallets.map(w => {
+          const chain = chains.find(c => c.id === w.chainId);
+          return {
+            symbol: chain?.symbol || "",
+            accountIndex: w.accountIndex,
+            label: w.label,
+          };
+        });
+        await hardwareWallet.saveChainPreferences(chainPrefs);
       }
     }
   }, [walletMode, softWallets, hardWallets, chains, storageInitialized]);
