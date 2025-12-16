@@ -1346,11 +1346,12 @@ export function HardwareStatusCard() {
               <div className="absolute inset-2 top-5 bottom-6 rounded-2xl bg-background flex flex-col items-center justify-center p-3 border border-border/50">
                 <motion.div
                   className="text-center flex flex-col items-center"
-                  animate={{ opacity: [0, 0, 1, 1, 1, 0, 0] }}
+                  animate={{ opacity: [0, 1, 1, 0] }}
                   transition={{
                     duration: 7,
                     repeat: Infinity,
-                    times: [0, 0.12, 0.18, 0.5, 0.82, 0.88, 1],
+                    ease: "easeInOut",
+                    times: [0.10, 0.14, 0.86, 0.90],
                   }}
                 >
                   <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center mb-1.5">
@@ -1372,7 +1373,7 @@ export function HardwareStatusCard() {
                 duration: 7,
                 repeat: Infinity,
                 ease: "easeInOut",
-                times: [0, 0.12, 0.88, 1],
+                times: [0, 0.10, 0.90, 1],
               }}
             >
               <div className="flex flex-col items-center">
