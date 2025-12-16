@@ -189,9 +189,11 @@ class HardwareWalletService {
       this.picoHasWallet = status?.has_seed === true;
       console.log("[HardwareWallet] Device has wallet:", this.picoHasWallet);
       
+      // SECURITY: Always require PIN entry on connection, even if device reports unlocked
+      // This prevents cached session from bypassing PIN verification
       this.setState({
         type: "raspberry_pi",
-        status: status?.locked === false ? "unlocked" : "connected",
+        status: "connected",  // Always start as connected, require PIN to unlock
         deviceName: status?.device_name || "Raspberry Pi Wallet",
         error: null,
       });
