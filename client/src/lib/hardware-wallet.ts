@@ -651,8 +651,31 @@ class HardwareWalletService {
       }
 
       if (this.state.type === "raspberry_pi") {
-        this.setState({ error: "Non-EVM signing on Pico device is not yet supported. Use simulated wallet mode for non-EVM chains." });
-        return null;
+        // For non-EVM chains, we use the cached seed from Pico for client-side signing
+        // The seed is securely stored on Pico and only accessible when unlocked with PIN
+        let seedPhrase: string | null = null;
+        
+        if (this.usingMobileUsb) {
+          seedPhrase = mobileUsbSerial.getSeedPhrase();
+          // If not cached, try to fetch it
+          if (!seedPhrase) {
+            seedPhrase = await mobileUsbSerial.ensureSeedCached();
+          }
+        } else {
+          seedPhrase = piWallet.getSeedPhrase();
+        }
+        
+        if (!seedPhrase) {
+          this.setState({ error: "Wallet seed not available. Please reconnect and unlock." });
+          return null;
+        }
+        
+        const result = await signNonEvmTransaction(params, seedPhrase);
+        if (!result) {
+          this.setState({ error: "Failed to sign non-EVM transaction" });
+          return null;
+        }
+        return result;
       }
 
       if (this.state.type === "ledger") {

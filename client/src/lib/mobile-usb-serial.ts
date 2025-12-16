@@ -32,6 +32,8 @@ export class MobileUsbSerialService {
   private responseResolver: ((value: any) => void) | null = null;
   private responseTimeout: ReturnType<typeof setTimeout> | null = null;
   private dataListener: { remove: () => void } | null = null;
+  private cachedSeed: string | null = null;
+  private currentPin: string | null = null;
 
   async isAvailable(): Promise<boolean> {
     if (!isMobileWithUsbSupport()) {
@@ -103,6 +105,7 @@ export class MobileUsbSerialService {
     } catch {}
     
     this.connected = false;
+    this.cachedSeed = null;
     this.readBuffer = "";
   }
 
@@ -155,7 +158,50 @@ export class MobileUsbSerialService {
     if (response.error) {
       throw new Error(response.error);
     }
-    return response.success === true || response.unlocked === true;
+    
+    if (response.success === true || response.unlocked === true) {
+      this.currentPin = pin;
+      // Cache the seed for non-EVM signing
+      if (!this.cachedSeed) {
+        try {
+          const seedResponse = await this.sendCommand("get_seed", { pin });
+          if (seedResponse.seed) {
+            this.cachedSeed = seedResponse.seed;
+          }
+        } catch (e) {
+          console.warn("[MobileUsbSerial] Failed to cache seed:", e);
+        }
+      }
+      return true;
+    }
+    return false;
+  }
+  
+  getSeedPhrase(): string | null {
+    return this.cachedSeed;
+  }
+  
+  async ensureSeedCached(): Promise<string | null> {
+    if (this.cachedSeed) {
+      return this.cachedSeed;
+    }
+    
+    // Use stored PIN from unlock
+    if (!this.currentPin) {
+      console.warn("[MobileUsbSerial] Cannot fetch seed: no PIN available (wallet not unlocked?)");
+      return null;
+    }
+    
+    try {
+      const response = await this.sendCommand("get_seed", { pin: this.currentPin });
+      if (response.seed) {
+        this.cachedSeed = response.seed;
+        return this.cachedSeed;
+      }
+    } catch (e) {
+      console.warn("[MobileUsbSerial] Failed to retrieve seed:", e);
+    }
+    return null;
   }
 
   async setupWallet(pin: string, seedPhrase: string): Promise<boolean> {
@@ -227,21 +273,14 @@ export class MobileUsbSerialService {
   async lock(): Promise<boolean> {
     try {
       const response = await this.sendCommand("lock");
+      // Clear cached seed and PIN on lock for security
+      this.cachedSeed = null;
+      this.currentPin = null;
       return response.success === true || response.locked === true;
     } catch {
+      this.cachedSeed = null;
+      this.currentPin = null;
       return false;
-    }
-  }
-
-  async getSeedPhrase(): Promise<string | null> {
-    try {
-      const response = await this.sendCommand("get_seed");
-      if (response.error) {
-        throw new Error(response.error);
-      }
-      return response.seed || null;
-    } catch {
-      return null;
     }
   }
 
