@@ -55,6 +55,7 @@ const menuItems = [
     title: "DApps",
     url: "/dapps",
     icon: Link2,
+    softWalletOnly: true,
   },
   {
     title: "Settings",
