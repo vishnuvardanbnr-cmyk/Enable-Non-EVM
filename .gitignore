@@ -1,6 +1,19 @@
-node_modules
-dist
+# Android SDK (NEVER commit)
+android-sdk/
+**/android-sdk/
+
+# Gradle
+.gradle/
+build/
+**/build/
+
+# Local system files
+.local/
+.config/
+
+# OS
 .DS_Store
-server/public
-vite.config.ts.*
-*.tar.gz
+Thumbs.db
+
+# Env
+.env
