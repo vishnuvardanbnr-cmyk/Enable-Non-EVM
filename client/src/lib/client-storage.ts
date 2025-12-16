@@ -459,6 +459,21 @@ class ClientStorage {
     await this.deleteSetting(this.HARD_WALLET_PIN_SALT_KEY);
   }
 
+  // Hardware wallet chain preferences (fallback storage when device doesn't support it)
+  private readonly HARD_WALLET_CHAIN_PREFS_KEY = "hardWalletChainPreferences";
+
+  async saveHardWalletChainPreferences(chains: { symbol: string; accountIndex: number; label?: string }[]): Promise<void> {
+    await this.saveSetting(this.HARD_WALLET_CHAIN_PREFS_KEY, chains);
+  }
+
+  async getHardWalletChainPreferences(): Promise<{ symbol: string; accountIndex: number; label?: string }[] | null> {
+    return await this.getSetting<{ symbol: string; accountIndex: number; label?: string }[]>(this.HARD_WALLET_CHAIN_PREFS_KEY);
+  }
+
+  async clearHardWalletChainPreferences(): Promise<void> {
+    await this.deleteSetting(this.HARD_WALLET_CHAIN_PREFS_KEY);
+  }
+
   // Get the next available account index for creating additional wallets
   getNextAccountIndex(wallets: StoredWallet[]): number {
     if (wallets.length === 0) return 0;

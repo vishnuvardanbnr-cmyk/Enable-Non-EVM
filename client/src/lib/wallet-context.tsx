@@ -680,6 +680,96 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     }
   }, [walletMode, hardwareState.status, hardWallets, wallets.length]);
 
+  // Track previous unlock status to detect unlock transition
+  const wasUnlockedRef = useRef<boolean>(false);
+  
+  // Sync chain preferences from hardware wallet on unlock
+  useEffect(() => {
+    if (walletMode !== "hard_wallet") {
+      wasUnlockedRef.current = false;
+      return;
+    }
+    
+    const justUnlocked = hardwareState.status === "unlocked" && !wasUnlockedRef.current;
+    wasUnlockedRef.current = hardwareState.status === "unlocked";
+    
+    if (!justUnlocked || !storageInitialized) return;
+    
+    (async () => {
+      try {
+        console.log("[WalletContext] Hardware wallet unlocked - syncing chain preferences");
+        const chainPrefs = await hardwareWallet.getChainPreferences();
+        
+        if (chainPrefs && chainPrefs.length > 0) {
+          console.log("[WalletContext] Loaded chain preferences from hardware:", chainPrefs);
+          
+          // Derive addresses for the stored chain preferences
+          const mnemonic = await hardwareWallet.getSeedPhraseFromDevice();
+          if (!mnemonic) {
+            console.error("[WalletContext] Cannot get seed phrase from device");
+            return;
+          }
+          
+          const currentChains = chains.length > 0 ? chains : DEFAULT_CHAINS.map((c, i) => ({
+            ...c,
+            id: `chain-${i}`,
+          }));
+          
+          const newWallets: Wallet[] = [];
+          
+          for (const pref of chainPrefs) {
+            const chain = currentChains.find(c => c.symbol === pref.symbol);
+            if (!chain) continue;
+            
+            const derivedAddresses = await deriveAllAddresses(mnemonic, [pref.symbol], pref.accountIndex);
+            const derived = derivedAddresses[0];
+            
+            if (derived && derived.address) {
+              newWallets.push({
+                id: `wallet-${Date.now()}-${chain.id}-${pref.accountIndex}`,
+                deviceId: "hard",
+                chainId: chain.id,
+                address: derived.address,
+                balance: "0",
+                isActive: true,
+                accountIndex: pref.accountIndex,
+                label: pref.label,
+              });
+            }
+          }
+          
+          if (newWallets.length > 0) {
+            console.log("[WalletContext] Derived wallets from chain preferences:", newWallets.length);
+            setHardWallets(newWallets);
+            setWallets(newWallets);
+            setHasHardWalletSetup(true);
+            
+            // Save to browser storage for balance caching
+            const walletsToSave: StoredWallet[] = newWallets.map(w => {
+              const chain = currentChains.find(c => c.id === w.chainId);
+              return {
+                id: w.id,
+                chainId: w.chainId,
+                chainName: chain?.name || "",
+                chainSymbol: chain?.symbol || "",
+                address: w.address,
+                balance: w.balance,
+                path: `m/44'/${chain?.symbol === 'ETH' ? '60' : chain?.symbol === 'BTC' ? '0' : '501'}'/0'/0/${w.accountIndex}`,
+                lastUpdated: new Date().toISOString(),
+                accountIndex: w.accountIndex,
+                label: w.label,
+              };
+            });
+            await clientStorage.saveHardWalletData(walletsToSave);
+            await clientStorage.setHardWalletSetup(true);
+          }
+        }
+      } catch (err) {
+        console.error("[WalletContext] Failed to sync chain preferences:", err);
+      }
+    })();
+  }, [walletMode, hardwareState.status, storageInitialized, chains]);
+
   const connectLedger = useCallback(async (): Promise<boolean> => {
     setIsLoading(true);
     setError(null);

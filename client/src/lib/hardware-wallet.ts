@@ -2,7 +2,7 @@ import "./polyfills";
 import TransportWebHID from "@ledgerhq/hw-transport-webhid";
 import Eth from "@ledgerhq/hw-app-eth";
 import { ethers } from "ethers";
-import { piWallet } from "./pi-wallet";
+import { piWallet, type StoredChainPreference } from "./pi-wallet";
 import { clientStorage } from "./client-storage";
 
 export type HardwareWalletType = "ledger" | "simulated" | "raspberry_pi" | null;
@@ -695,6 +695,45 @@ class HardwareWalletService {
       error: null,
     });
     return true;
+  }
+
+  async saveChainPreferences(chains: StoredChainPreference[]): Promise<boolean> {
+    if (this.state.type === "raspberry_pi" && this.state.status === "unlocked") {
+      try {
+        const saved = await piWallet.saveChains(chains);
+        if (saved) {
+          console.log("[HardwareWallet] Chain preferences saved to hardware");
+          return true;
+        }
+        console.log("[HardwareWallet] Hardware doesn't support chain storage, using fallback");
+        await clientStorage.saveHardWalletChainPreferences(chains);
+        return true;
+      } catch (error) {
+        console.error("[HardwareWallet] Failed to save chains to hardware:", error);
+        await clientStorage.saveHardWalletChainPreferences(chains);
+        return true;
+      }
+    }
+    await clientStorage.saveHardWalletChainPreferences(chains);
+    return true;
+  }
+
+  async getChainPreferences(): Promise<StoredChainPreference[] | null> {
+    if (this.state.type === "raspberry_pi" && this.state.status === "unlocked") {
+      try {
+        const chains = await piWallet.getChains();
+        if (chains !== null) {
+          console.log("[HardwareWallet] Chain preferences loaded from hardware:", chains);
+          return chains;
+        }
+        console.log("[HardwareWallet] Hardware doesn't support chain storage, using fallback");
+        return await clientStorage.getHardWalletChainPreferences();
+      } catch (error) {
+        console.error("[HardwareWallet] Failed to load chains from hardware:", error);
+        return await clientStorage.getHardWalletChainPreferences();
+      }
+    }
+    return await clientStorage.getHardWalletChainPreferences();
   }
 }
 
