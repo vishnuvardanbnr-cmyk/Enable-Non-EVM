@@ -8,6 +8,7 @@ import { getUniversalBalance } from "./blockchain";
 import { fetchAllTransactions, type ParsedTransaction } from "./explorer-service";
 import { fetchTopAssets, type TopAsset } from "./price-service";
 import { deriveAllAddresses, type DerivedAddress as MultiChainDerivedAddress } from "./multi-chain-address";
+import { getEnabledChainSymbols } from "./chain-mappings";
 
 interface WalletContextType {
   hardwareState: HardwareWalletState;
@@ -1125,10 +1126,23 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
         return;
       }
       
+      // Only fetch balances for chains that have enabled assets
+      const enabledChainSymbols = getEnabledChainSymbols(enabledAssetIds);
+      const walletsToRefresh = currentWallets.filter(wallet => {
+        const chain = chains.find(c => c.id === wallet.chainId);
+        return chain && enabledChainSymbols.has(chain.symbol);
+      });
+      
+      // If no wallets match enabled chains, skip refresh but don't mark as stale
+      if (walletsToRefresh.length === 0) {
+        setBalanceCacheStatus(prev => ({ ...prev, isStale: false, isRefreshing: false }));
+        return;
+      }
+      
       const balancesToCache: Array<{ address: string; chainSymbol: string; chainId: number; balance: string }> = [];
       
-      const updatedWallets = await Promise.all(
-        currentWallets.map(async (wallet) => {
+      const updatedWalletsPartial = await Promise.all(
+        walletsToRefresh.map(async (wallet) => {
           const chain = chains.find(c => c.id === wallet.chainId);
           if (!chain) {
             return wallet;
@@ -1152,6 +1166,15 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
           }
         })
       );
+      
+      // Merge updated wallets with unchanged ones
+      const updatedWalletIds = new Set(updatedWalletsPartial.map(w => w.id));
+      const updatedWallets = currentWallets.map(wallet => {
+        if (updatedWalletIds.has(wallet.id)) {
+          return updatedWalletsPartial.find(w => w.id === wallet.id) || wallet;
+        }
+        return wallet;
+      });
       
       // Only update wallets if at least one balance was successfully fetched
       // This preserves cached balances when all fetches fail
@@ -1207,7 +1230,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     } finally {
       isRefreshingRef.current = false;
     }
-  }, [chains, storageInitialized, walletMode, softWallets, hardWallets]);
+  }, [chains, storageInitialized, walletMode, softWallets, hardWallets, enabledAssetIds]);
 
   const refreshWalletBalance = useCallback(async (walletId: string) => {
     const currentWallets = walletMode === "soft_wallet" ? softWallets : hardWallets;

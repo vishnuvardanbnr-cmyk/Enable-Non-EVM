@@ -47,6 +47,7 @@ import type { TopAsset } from "@/lib/price-service";
 import { Link, useLocation } from "wouter";
 import { getTokenBalanceForAsset, isTokenAsset, getCustomTokenBalance } from "@/lib/blockchain";
 import { clientStorage, type CustomToken } from "@/lib/client-storage";
+import { COINGECKO_ID_TO_CHAIN_SYMBOL, TOKEN_PARENT_CHAIN_SYMBOL, TOKEN_PARENT_CHAIN } from "@/lib/chain-mappings";
 
 const formatBalance = formatCryptoBalance;
 
@@ -54,120 +55,6 @@ function truncateAddress(address: string): string {
   if (!address) return "";
   return `${address.slice(0, 6)}...${address.slice(-4)}`;
 }
-
-const COINGECKO_ID_TO_CHAIN_SYMBOL: Record<string, string> = {
-  'ethereum': 'ETH',
-  'matic-network': 'MATIC',
-  'binancecoin': 'BNB',
-  'avalanche-2': 'AVAX',
-  'arbitrum': 'ARB',
-  'bitcoin': 'BTC',
-  'solana': 'SOL',
-  'ripple': 'XRP',
-  'dogecoin': 'DOGE',
-  'cardano': 'ADA',
-  'tron': 'TRX',
-  'polkadot': 'DOT',
-  'litecoin': 'LTC',
-  'bitcoin-cash': 'BCH',
-  'cosmos': 'ATOM',
-  'osmosis': 'OSMO',
-  'tether': 'ETH',
-  'usd-coin': 'ETH',
-  'staked-ether': 'ETH',
-  'chainlink': 'ETH',
-  'wrapped-bitcoin': 'ETH',
-  'uniswap': 'ETH',
-  'shiba-inu': 'ETH',
-  'aave': 'ETH',
-  'maker': 'ETH',
-  'the-graph': 'ETH',
-  'compound-governance-token': 'ETH',
-  'yearn-finance': 'ETH',
-  'sushi': 'ETH',
-  'curve-dao-token': 'ETH',
-  '1inch': 'ETH',
-  'ens': 'ETH',
-  'lido-dao': 'ETH',
-  'rocket-pool': 'ETH',
-  'frax': 'ETH',
-  'dai': 'ETH',
-  'pancakeswap-token': 'BNB',
-  'venus': 'BNB',
-  'baby-doge-coin': 'BNB',
-  'trust-wallet-token': 'BNB',
-  'raydium': 'SOL',
-  'bonk': 'SOL',
-  'jupiter-exchange-solana': 'SOL',
-  'jito-governance-token': 'SOL',
-  'trader-joe': 'AVAX',
-  'benqi': 'AVAX',
-  'gmx': 'ARB',
-  'magic': 'ARB',
-  'optimism': 'OP',
-};
-
-// Maps token IDs to parent chain SYMBOL for wallet address lookup
-const TOKEN_PARENT_CHAIN_SYMBOL: Record<string, string> = {
-  'tether': 'ETH',
-  'tether-bsc': 'BNB',
-  'tether-tron': 'TRX',
-  'usd-coin': 'ETH',
-  'usd-coin-bsc': 'BNB',
-  'usd-coin-tron': 'TRX',
-  'staked-ether': 'ETH',
-  'chainlink': 'ETH',
-  'wrapped-bitcoin': 'ETH',
-  'uniswap': 'ETH',
-  'shiba-inu': 'ETH',
-  'aave': 'ETH',
-  'maker': 'ETH',
-  'the-graph': 'ETH',
-  'dai': 'ETH',
-  'pancakeswap-token': 'BNB',
-  'venus': 'BNB',
-  'trust-wallet-token': 'BNB',
-  'raydium': 'SOL',
-  'bonk': 'SOL',
-  'jupiter-exchange-solana': 'SOL',
-  'jito-governance-token': 'SOL',
-  'trader-joe': 'AVAX',
-  'benqi': 'AVAX',
-  'gmx': 'ARB',
-  'magic': 'ARB',
-  'optimism': 'OP',
-};
-
-// Maps token IDs to parent chain NAME for display purposes
-const TOKEN_PARENT_CHAIN: Record<string, string> = {
-  'tether': 'Ethereum',
-  'tether-bsc': 'BNB Smart Chain',
-  'tether-tron': 'TRON',
-  'usd-coin': 'Ethereum',
-  'usd-coin-bsc': 'BNB Smart Chain',
-  'usd-coin-tron': 'TRON',
-  'staked-ether': 'Ethereum',
-  'chainlink': 'Ethereum',
-  'wrapped-bitcoin': 'Ethereum',
-  'uniswap': 'Ethereum',
-  'shiba-inu': 'Ethereum',
-  'aave': 'Ethereum',
-  'maker': 'Ethereum',
-  'the-graph': 'Ethereum',
-  'dai': 'Ethereum',
-  'pancakeswap-token': 'BNB Smart Chain',
-  'venus': 'BNB Smart Chain',
-  'trust-wallet-token': 'BNB Smart Chain',
-  'raydium': 'Solana',
-  'bonk': 'Solana',
-  'jupiter-exchange-solana': 'Solana',
-  'jito-governance-token': 'Solana',
-  'trader-joe': 'Avalanche',
-  'benqi': 'Avalanche',
-  'gmx': 'Arbitrum',
-  'magic': 'Arbitrum',
-  'optimism': 'Optimism',
-};
 
 const JSDELIVR_CDN = 'https://cdn.jsdelivr.net/npm/cryptocurrency-icons@0.16.1/128/color';
 const COINGECKO_CDN = 'https://assets.coingecko.com/coins/images';
