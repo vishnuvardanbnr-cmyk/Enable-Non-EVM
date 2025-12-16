@@ -1514,7 +1514,12 @@ export default function Dashboard() {
                   const usdValue = balanceNum * (token.currentPrice || 0);
 
                   return (
-                    <Card key={token.id} data-testid={`card-token-${token.id}`}>
+                    <Card 
+                      key={token.id} 
+                      className="cursor-pointer hover:bg-muted/30 transition-colors"
+                      onClick={() => navigate(`/wallet/${selectedChain.id}/token/${token.id}`)}
+                      data-testid={`card-token-${token.id}`}
+                    >
                       <CardContent className="p-4">
                         <div className="flex items-center gap-4">
                           {getAssetIcon(token.id, token.image) ? (

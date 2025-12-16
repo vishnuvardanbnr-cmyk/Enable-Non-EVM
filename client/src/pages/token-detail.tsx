@@ -18,6 +18,7 @@ import { useToast } from "@/hooks/use-toast";
 import { ChainIcon } from "@/components/chain-icon";
 import { fetchPrices, formatUSD, formatCryptoBalance, type PriceData } from "@/lib/price-service";
 import type { ParsedTransaction } from "@/lib/explorer-service";
+import { TOKEN_PARENT_CHAIN } from "@/lib/chain-mappings";
 
 const COINGECKO_ID_BY_SYMBOL: Record<string, string> = {
   'BTC': 'bitcoin',
@@ -61,18 +62,23 @@ export default function TokenDetail() {
   const wallet = visibleWallets.find(w => w.chainId === chainId);
   
   const isNativeToken = tokenId === "native" || tokenId === chain?.symbol;
-  const customToken = !isNativeToken ? customTokens.find(t => 
+  
+  // Check if it's a standard token from topAssets (like USDT, USDC)
+  const standardToken = !isNativeToken ? topAssets.find(a => a.id === tokenId) : null;
+  const isStandardToken = !!standardToken && !!TOKEN_PARENT_CHAIN[standardToken.id];
+  
+  const customToken = !isNativeToken && !isStandardToken ? customTokens.find(t => 
     t.id === tokenId || t.contractAddress.toLowerCase() === tokenId?.toLowerCase()
   ) : null;
 
-  const tokenSymbol = isNativeToken ? chain?.symbol : customToken?.symbol;
-  const tokenName = isNativeToken ? chain?.name : customToken?.name;
+  const tokenSymbol = isNativeToken ? chain?.symbol : (standardToken?.symbol?.toUpperCase() || customToken?.symbol);
+  const tokenName = isNativeToken ? chain?.name : (standardToken?.name || customToken?.name);
   const tokenBalance = isNativeToken ? wallet?.balance || "0" : "0";
   const tokenContractAddress = customToken?.contractAddress;
 
   const coingeckoId = tokenSymbol ? COINGECKO_ID_BY_SYMBOL[tokenSymbol] : undefined;
-  const topAsset = coingeckoId ? topAssets.find(a => a.id === coingeckoId) : undefined;
-  const price = tokenSymbol ? (prices[tokenSymbol] || topAsset?.currentPrice || 0) : 0;
+  const topAsset = standardToken || (coingeckoId ? topAssets.find(a => a.id === coingeckoId) : undefined);
+  const price = topAsset?.currentPrice || (tokenSymbol ? prices[tokenSymbol] : 0) || 0;
   const priceChange24h = topAsset?.priceChangePercentage24h || 0;
   const usdValue = parseFloat(tokenBalance) * price;
 
