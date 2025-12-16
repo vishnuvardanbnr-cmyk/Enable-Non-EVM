@@ -21,7 +21,6 @@ import { useWallet } from "@/lib/wallet-context";
 import { useToast } from "@/hooks/use-toast";
 import { hardwareWallet } from "@/lib/hardware-wallet";
 import { softWallet } from "@/lib/soft-wallet";
-import { piWallet } from "@/lib/pi-wallet";
 import { ethers } from "ethers";
 import { DEFAULT_CHAINS } from "@shared/schema";
 import { ChainIcon } from "@/components/chain-icon";
@@ -324,7 +323,8 @@ export function HardwareStatus() {
     
     setHeaderPicoLoading(true);
     try {
-      const success = await piWallet.setupWallet(headerPicoPin, words.join(" "));
+      // Use hardwareWallet.setupWallet which routes correctly for mobile vs desktop
+      const success = await hardwareWallet.setupWallet(headerPicoPin, words.join(" "));
       if (success) {
         hardwareWallet.setHasWalletOnDevice(true);
         const unlocked = await unlockWallet(headerPicoPin);
@@ -1338,7 +1338,8 @@ export function HardwareStatusCard() {
     
     setIsPicoSetupLoading(true);
     try {
-      const success = await piWallet.setupWallet(picoNewPin, words.join(" "));
+      // Use hardwareWallet.setupWallet which routes correctly for mobile vs desktop
+      const success = await hardwareWallet.setupWallet(picoNewPin, words.join(" "));
       
       if (success) {
         hardwareWallet.setHasWalletOnDevice(true);

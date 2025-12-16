@@ -897,6 +897,22 @@ class HardwareWalletService {
     }
     return await clientStorage.getHardWalletChainPreferences();
   }
+
+  async setupWallet(pin: string, seedPhrase: string): Promise<boolean> {
+    console.log("[HardwareWallet] setupWallet called, usingMobileUsb:", this.usingMobileUsb);
+    try {
+      if (this.usingMobileUsb) {
+        console.log("[HardwareWallet] Setting up via mobile USB...");
+        return await mobileUsbSerial.setupWallet(pin, seedPhrase);
+      } else {
+        console.log("[HardwareWallet] Setting up via desktop serial...");
+        return await piWallet.setupWallet(pin, seedPhrase);
+      }
+    } catch (error) {
+      console.error("[HardwareWallet] setupWallet failed:", error);
+      throw error;
+    }
+  }
 }
 
 export const hardwareWallet = new HardwareWalletService();
