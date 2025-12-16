@@ -89,9 +89,19 @@ API Endpoints:
 - `@shared/*` → `shared/*`
 - `@assets/*` → `attached_assets/*`
 
+## Non-EVM Transaction Signing (Hybrid Approach)
+
+For non-EVM chains (Bitcoin, Solana, TRON), the Pico hardware uses a hybrid signing approach:
+1. **Seed Storage**: Seed phrase is securely stored on Pico, protected by PIN
+2. **Client-Side Signing**: When unlocked, seed is cached in memory for client-side key derivation
+3. **Security**: Seed is cleared from memory on lock/disconnect
+4. **Libraries Used**: ethers.js for secp256k1 (Bitcoin/TRON), tweetnacl for Ed25519 (Solana)
+
+This enables all chains to work with hardware wallet while keeping seed PIN-protected on Pico.
+
 ## Important Constraints
 
 1. **No WebAssembly**: All crypto must be pure JavaScript (Pico wallet requirement)
 2. **No vite.config.ts changes**: Existing Vite setup must not be modified
-3. **USB on Desktop only**: Mobile devices use bridge for Pico connection
+3. **USB on Desktop only**: Mobile devices use bridge or direct USB OTG connection
 4. **PIN Security**: 4-6 digit PIN required, session locks after 5 min idle
