@@ -107,6 +107,38 @@ const COINGECKO_ID_TO_CHAIN_SYMBOL: Record<string, string> = {
   'optimism': 'OP',
 };
 
+// Maps token IDs to parent chain SYMBOL for wallet address lookup
+const TOKEN_PARENT_CHAIN_SYMBOL: Record<string, string> = {
+  'tether': 'ETH',
+  'tether-bsc': 'BNB',
+  'tether-tron': 'TRX',
+  'usd-coin': 'ETH',
+  'usd-coin-bsc': 'BNB',
+  'usd-coin-tron': 'TRX',
+  'staked-ether': 'ETH',
+  'chainlink': 'ETH',
+  'wrapped-bitcoin': 'ETH',
+  'uniswap': 'ETH',
+  'shiba-inu': 'ETH',
+  'aave': 'ETH',
+  'maker': 'ETH',
+  'the-graph': 'ETH',
+  'dai': 'ETH',
+  'pancakeswap-token': 'BNB',
+  'venus': 'BNB',
+  'trust-wallet-token': 'BNB',
+  'raydium': 'SOL',
+  'bonk': 'SOL',
+  'jupiter-exchange-solana': 'SOL',
+  'jito-governance-token': 'SOL',
+  'trader-joe': 'AVAX',
+  'benqi': 'AVAX',
+  'gmx': 'ARB',
+  'magic': 'ARB',
+  'optimism': 'OP',
+};
+
+// Maps token IDs to parent chain NAME for display purposes
 const TOKEN_PARENT_CHAIN: Record<string, string> = {
   'tether': 'Ethereum',
   'tether-bsc': 'BNB Smart Chain',
@@ -509,11 +541,11 @@ export default function Dashboard() {
   const enabledAssets = topAssets.filter(asset => enabledAssetIds.has(asset.id));
 
   const getWalletForAsset = (asset: TopAsset): { wallet?: WalletType; chain?: Chain } => {
-    // Check if this is a token - if so, look up by parent chain name
-    const parentChainName = TOKEN_PARENT_CHAIN[asset.id];
-    if (parentChainName) {
-      // For tokens, find the parent chain by name
-      const chain = displayChains.find(c => c.name === parentChainName);
+    // Check if this is a token - if so, look up by parent chain symbol
+    const parentChainSymbol = TOKEN_PARENT_CHAIN_SYMBOL[asset.id];
+    if (parentChainSymbol) {
+      // For tokens, find the parent chain by symbol (more reliable than name)
+      const chain = displayChains.find(c => c.symbol === parentChainSymbol);
       if (!chain) return {};
       const wallet = displayWallets.find(w => w.chainId === chain.id);
       return { wallet, chain };
@@ -532,10 +564,10 @@ export default function Dashboard() {
 
   // Check if an asset has a wallet (either directly or via parent chain for tokens)
   const hasWalletForAsset = (asset: TopAsset): boolean => {
-    const parentChainName = TOKEN_PARENT_CHAIN[asset.id];
-    if (parentChainName) {
-      // For tokens, check if parent chain has a wallet
-      const parentChain = displayChains.find(c => c.name === parentChainName);
+    const parentChainSymbol = TOKEN_PARENT_CHAIN_SYMBOL[asset.id];
+    if (parentChainSymbol) {
+      // For tokens, check if parent chain has a wallet (by symbol)
+      const parentChain = displayChains.find(c => c.symbol === parentChainSymbol);
       if (!parentChain) return false;
       return displayWallets.some(w => w.chainId === parentChain.id);
     } else {
