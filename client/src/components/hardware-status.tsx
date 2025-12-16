@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Usb, Lock, Unlock, Shield, Unplug, RotateCcw, AlertTriangle, Laptop, Cpu, Copy, Check, Plus, Download } from "lucide-react";
+import { motion } from "framer-motion";
+import { Usb, Lock, Unlock, Shield, Unplug, RotateCcw, AlertTriangle, Laptop, Cpu, Copy, Check, Plus, Download, Smartphone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -1338,9 +1339,33 @@ export function HardwareStatusCard() {
   return (
     <>
       <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-muted-foreground/30 bg-muted/20 p-8 text-center">
-        <div className="mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-primary/10">
-          <Shield className="h-10 w-10 text-primary" />
-        </div>
+        {walletMode === "hard_wallet" ? (
+          <div className="mb-4 relative h-32 w-24 overflow-hidden">
+            <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-20 h-20 rounded-xl border-4 border-primary/40 bg-background flex items-end justify-center overflow-hidden">
+              <div className="absolute top-2 left-1/2 -translate-x-1/2 w-3 h-1 rounded-full bg-primary/30" />
+              <motion.div
+                className="absolute -top-12 left-1/2 -translate-x-1/2"
+                animate={{ y: [0, 24, 24, 0] }}
+                transition={{
+                  duration: 2.5,
+                  repeat: Infinity,
+                  ease: "easeInOut",
+                  times: [0, 0.4, 0.6, 1],
+                }}
+              >
+                <div className="w-8 h-14 rounded-md bg-primary/80 border-2 border-primary flex flex-col items-center justify-center gap-1">
+                  <div className="w-4 h-1 rounded-full bg-background/60" />
+                  <div className="w-4 h-1 rounded-full bg-background/60" />
+                  <Usb className="h-3 w-3 text-background/80 mt-1" />
+                </div>
+              </motion.div>
+            </div>
+          </div>
+        ) : (
+          <div className="mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-primary/10">
+            <Shield className="h-10 w-10 text-primary" />
+          </div>
+        )}
         
         {!isConnected ? (
           <>
