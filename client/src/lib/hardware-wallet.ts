@@ -4,6 +4,11 @@ import Eth from "@ledgerhq/hw-app-eth";
 import { ethers } from "ethers";
 import { piWallet, type StoredChainPreference } from "./pi-wallet";
 import { clientStorage } from "./client-storage";
+import { 
+  signNonEvmTransaction, 
+  type NonEvmTransactionParams,
+  type SignedTransaction 
+} from "./non-evm-chains";
 
 export type HardwareWalletType = "ledger" | "simulated" | "raspberry_pi" | null;
 export type ConnectionStatus = "disconnected" | "connecting" | "connected" | "locked" | "unlocked";
@@ -545,6 +550,39 @@ class HardwareWalletService {
       return null;
     } catch (error: any) {
       this.setState({ error: error.message || "Failed to sign transaction" });
+      return null;
+    }
+  }
+
+  async signNonEvmTransaction(params: NonEvmTransactionParams): Promise<SignedTransaction | null> {
+    if (this.state.status !== "unlocked") {
+      this.setState({ error: "Device is locked" });
+      return null;
+    }
+
+    try {
+      if (this.state.type === "simulated" && this.simulatedSeedPhrase) {
+        const result = await signNonEvmTransaction(params, this.simulatedSeedPhrase);
+        if (!result) {
+          this.setState({ error: "Failed to sign non-EVM transaction" });
+          return null;
+        }
+        return result;
+      }
+
+      if (this.state.type === "raspberry_pi") {
+        this.setState({ error: "Non-EVM signing on Pico device is not yet supported. Use simulated wallet mode for non-EVM chains." });
+        return null;
+      }
+
+      if (this.state.type === "ledger") {
+        this.setState({ error: "Non-EVM signing on Ledger is not yet supported" });
+        return null;
+      }
+
+      return null;
+    } catch (error: any) {
+      this.setState({ error: error.message || "Failed to sign non-EVM transaction" });
       return null;
     }
   }

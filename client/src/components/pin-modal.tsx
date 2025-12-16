@@ -18,6 +18,10 @@ import {
   getTokenContract,
   type TransactionParams 
 } from "@/lib/transaction-service";
+import { 
+  broadcastNonEvmTransaction,
+  type NonEvmTransactionParams 
+} from "@/lib/non-evm-chains";
 
 export function PinModal() {
   const { 
@@ -131,64 +135,40 @@ export function PinModal() {
               return;
             }
 
-            let tokenContract: { address: string; decimals: number } | null = null;
-            if (!pendingTransaction.isNativeToken && pendingTransaction.tokenSymbol) {
-              const contractInfo = getTokenContract(pendingTransaction.tokenSymbol, pendingTransaction.chainId);
-              if (contractInfo) {
-                tokenContract = { address: contractInfo.address, decimals: contractInfo.decimals };
-              } else if (pendingTransaction.tokenContractAddress) {
-                tokenContract = { address: pendingTransaction.tokenContractAddress, decimals: 18 };
-              }
-            }
-
-            const txParams: TransactionParams = {
-              chainId: pendingTransaction.chainId,
-              from: walletAddress,
-              to: pendingTransaction.toAddress,
-              amount: pendingTransaction.amount,
-              tokenSymbol: pendingTransaction.tokenSymbol,
-              tokenContractAddress: tokenContract?.address || pendingTransaction.tokenContractAddress,
-              isNativeToken: pendingTransaction.isNativeToken ?? true,
-              decimals: tokenContract?.decimals,
-            };
-
-            const txResult = await buildTransaction(txParams);
+            const chainSymbol = getChainSymbol(pendingTransaction.chainId);
+            const isNonEvmChain = chainSupport.type === "bitcoin" || chainSupport.type === "solana" || chainSupport.type === "tron";
             
-            if (!txResult) {
-              toast({
-                title: "Transaction Build Failed",
-                description: "Could not build transaction. Please try again.",
-                variant: "destructive",
-              });
-              setPendingTransaction(null);
-              setShowPinModal(false);
-              setPinAction(null);
-              setIsLoading(false);
-              return;
-            }
+            if (isNonEvmChain) {
+              const nonEvmParams: NonEvmTransactionParams = {
+                chainType: chainSupport.type as "bitcoin" | "solana" | "tron",
+                from: walletAddress,
+                to: pendingTransaction.toAddress,
+                amount: pendingTransaction.amount,
+                isNativeToken: pendingTransaction.isNativeToken ?? true,
+              };
 
-            if (!txResult.tx) {
-              toast({
-                title: "Transaction Error",
-                description: "Could not build transaction data. Please try again.",
-                variant: "destructive",
-              });
-              setPendingTransaction(null);
-              setShowPinModal(false);
-              setPinAction(null);
-              setIsLoading(false);
-              return;
-            }
-
-            const signedTx = walletMode === "soft_wallet"
-              ? await softWallet.signTransaction(txResult.tx)
-              : await hardwareWallet.signTransaction(txResult.tx);
-            
-            if (signedTx) {
-              const result = await broadcastTransaction(signedTx, txResult.chainType, txResult.evmChainId);
+              const signedResult = walletMode === "soft_wallet"
+                ? await softWallet.signNonEvmTransaction(nonEvmParams)
+                : await hardwareWallet.signNonEvmTransaction(nonEvmParams);
               
-              if (result.success) {
-                const chainSymbol = getChainSymbol(pendingTransaction.chainId);
+              if (!signedResult) {
+                toast({
+                  title: "Signing Failed",
+                  description: walletMode === "soft_wallet" 
+                    ? "Could not sign the transaction" 
+                    : "Non-EVM signing is only supported in simulated hardware wallet mode",
+                  variant: "destructive",
+                });
+                setPendingTransaction(null);
+                setShowPinModal(false);
+                setPinAction(null);
+                setIsLoading(false);
+                return;
+              }
+
+              const broadcastResult = await broadcastNonEvmTransaction(signedResult.chainType, signedResult.signedTx);
+              
+              if (broadcastResult.success) {
                 const storedTx: StoredTransaction = {
                   id: `tx-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
                   walletId: pendingTransaction.chainId,
@@ -199,32 +179,119 @@ export function PinModal() {
                   tokenSymbol: pendingTransaction.tokenSymbol || chainSymbol,
                   toAddress: pendingTransaction.toAddress,
                   fromAddress: walletAddress,
-                  txHash: result.txHash,
+                  txHash: broadcastResult.txHash || signedResult.txHash,
                   timestamp: new Date().toISOString(),
                 };
                 await clientStorage.saveTransaction(storedTx);
                 
                 toast({
                   title: "Transaction Sent",
-                  description: `Transaction broadcast successfully. Hash: ${result.txHash?.slice(0, 10)}...`,
+                  description: `Transaction broadcast successfully. Hash: ${(broadcastResult.txHash || signedResult.txHash)?.slice(0, 10)}...`,
                 });
-                
                 refreshBalances();
               } else {
                 toast({
                   title: "Broadcast Failed",
-                  description: result.error || "Failed to broadcast transaction",
+                  description: broadcastResult.error || "Failed to broadcast transaction",
                   variant: "destructive",
                 });
                 refreshBalances();
               }
             } else {
-              toast({
-                title: "Signing Failed",
-                description: "Could not sign the transaction",
-                variant: "destructive",
-              });
-              refreshBalances();
+              let tokenContract: { address: string; decimals: number } | null = null;
+              if (!pendingTransaction.isNativeToken && pendingTransaction.tokenSymbol) {
+                const contractInfo = getTokenContract(pendingTransaction.tokenSymbol, pendingTransaction.chainId);
+                if (contractInfo) {
+                  tokenContract = { address: contractInfo.address, decimals: contractInfo.decimals };
+                } else if (pendingTransaction.tokenContractAddress) {
+                  tokenContract = { address: pendingTransaction.tokenContractAddress, decimals: 18 };
+                }
+              }
+
+              const txParams: TransactionParams = {
+                chainId: pendingTransaction.chainId,
+                from: walletAddress,
+                to: pendingTransaction.toAddress,
+                amount: pendingTransaction.amount,
+                tokenSymbol: pendingTransaction.tokenSymbol,
+                tokenContractAddress: tokenContract?.address || pendingTransaction.tokenContractAddress,
+                isNativeToken: pendingTransaction.isNativeToken ?? true,
+                decimals: tokenContract?.decimals,
+              };
+
+              const txResult = await buildTransaction(txParams);
+              
+              if (!txResult) {
+                toast({
+                  title: "Transaction Build Failed",
+                  description: "Could not build transaction. Please try again.",
+                  variant: "destructive",
+                });
+                setPendingTransaction(null);
+                setShowPinModal(false);
+                setPinAction(null);
+                setIsLoading(false);
+                return;
+              }
+
+              if (!txResult.tx) {
+                toast({
+                  title: "Transaction Error",
+                  description: "Could not build transaction data. Please try again.",
+                  variant: "destructive",
+                });
+                setPendingTransaction(null);
+                setShowPinModal(false);
+                setPinAction(null);
+                setIsLoading(false);
+                return;
+              }
+
+              const signedTx = walletMode === "soft_wallet"
+                ? await softWallet.signTransaction(txResult.tx)
+                : await hardwareWallet.signTransaction(txResult.tx);
+              
+              if (signedTx) {
+                const result = await broadcastTransaction(signedTx, txResult.chainType, txResult.evmChainId);
+                
+                if (result.success) {
+                  const storedTx: StoredTransaction = {
+                    id: `tx-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+                    walletId: pendingTransaction.chainId,
+                    chainId: pendingTransaction.chainId,
+                    type: "send",
+                    status: "confirmed",
+                    amount: pendingTransaction.amount,
+                    tokenSymbol: pendingTransaction.tokenSymbol || chainSymbol,
+                    toAddress: pendingTransaction.toAddress,
+                    fromAddress: walletAddress,
+                    txHash: result.txHash,
+                    timestamp: new Date().toISOString(),
+                  };
+                  await clientStorage.saveTransaction(storedTx);
+                  
+                  toast({
+                    title: "Transaction Sent",
+                    description: `Transaction broadcast successfully. Hash: ${result.txHash?.slice(0, 10)}...`,
+                  });
+                  
+                  refreshBalances();
+                } else {
+                  toast({
+                    title: "Broadcast Failed",
+                    description: result.error || "Failed to broadcast transaction",
+                    variant: "destructive",
+                  });
+                  refreshBalances();
+                }
+              } else {
+                toast({
+                  title: "Signing Failed",
+                  description: "Could not sign the transaction",
+                  variant: "destructive",
+                });
+                refreshBalances();
+              }
             }
             setPendingTransaction(null);
           } else {

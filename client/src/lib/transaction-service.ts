@@ -431,11 +431,11 @@ export function isChainSupported(chainId: string): { supported: boolean; type: s
     case "evm":
       return { supported: true, type: "evm", evmChainId: chainInfo.evmChainId };
     case "solana":
-      return { supported: false, type: "solana", reason: "Solana transactions coming soon. Currently only EVM chains (ETH, BNB, etc.) are supported." };
+      return { supported: true, type: "solana" };
     case "tron":
-      return { supported: false, type: "tron", reason: "TRON transactions coming soon. Currently only EVM chains (ETH, BNB, etc.) are supported." };
+      return { supported: true, type: "tron" };
     case "bitcoin":
-      return { supported: false, type: "bitcoin", reason: "Bitcoin transactions coming soon. Currently only EVM chains (ETH, BNB, etc.) are supported." };
+      return { supported: true, type: "bitcoin" };
     default:
       return { supported: false, type: "unknown", reason: "Unknown chain type" };
   }

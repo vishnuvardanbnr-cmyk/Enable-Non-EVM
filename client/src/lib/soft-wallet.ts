@@ -1,6 +1,11 @@
 import { clientStorage } from "./client-storage";
 import { deriveAllAddresses, type DerivedAddress } from "./multi-chain-address";
 import { Mnemonic, HDNodeWallet, type TransactionRequest } from "ethers";
+import { 
+  signNonEvmTransaction, 
+  type NonEvmTransactionParams,
+  type SignedTransaction 
+} from "./non-evm-chains";
 
 export type SoftWalletStatus = "disconnected" | "locked" | "unlocked";
 
@@ -358,6 +363,25 @@ class SoftWallet {
       return signedTx;
     } catch (error: any) {
       this.setState({ error: error.message || "Failed to sign transaction" });
+      return null;
+    }
+  }
+
+  async signNonEvmTransaction(params: NonEvmTransactionParams): Promise<SignedTransaction | null> {
+    if (this.state.status !== "unlocked" || !this.decryptedSeed) {
+      this.setState({ error: "Wallet must be unlocked to sign transactions" });
+      return null;
+    }
+
+    try {
+      const result = await signNonEvmTransaction(params, this.decryptedSeed);
+      if (!result) {
+        this.setState({ error: "Failed to sign non-EVM transaction" });
+        return null;
+      }
+      return result;
+    } catch (error: any) {
+      this.setState({ error: error.message || "Failed to sign non-EVM transaction" });
       return null;
     }
   }
