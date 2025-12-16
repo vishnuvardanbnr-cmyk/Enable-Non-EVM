@@ -230,8 +230,10 @@ function CombinedAssetCard({ asset, wallet, chain, prices, tokenBalance }: Combi
   );
 
   if (hasWallet) {
+    // Navigate to token detail if it's a token, otherwise native asset detail
+    const tokenPath = isToken ? `/wallet/${chain.id}/token/${asset.id}` : `/wallet/${chain.id}/token/native`;
     return (
-      <Link href={`/wallet/${chain.id}/token/native`}>
+      <Link href={tokenPath}>
         {cardContent}
       </Link>
     );
